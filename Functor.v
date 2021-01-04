@@ -12,15 +12,15 @@ Class Functor (F : Type -> Type) : Type :=
     fmap_compose : forall {A B C : Type} (f : A -> B) (g : B -> C),
         fmap (g ∘ f) = fmap g ∘ fmap f }.
 
-Infix "<$>" := fmap (at level 43, right associativity).
+Infix "<$>" := fmap (at level 43, left associativity).
 
 (** * Functor Specification *)
 
-(** Because Coq Type Classes necessitate a
+(** Because Coq Type Classes (ab)use
     cumbersome record syntax, I found it
     more convenient to create namespaces
-    for definitions then instantiate
-    the typeclass with those definitions *)
+    for definitions and then to instantiate
+    the Type Class with those definitions *)
 Module Type FunctorSpec.
   (** The Functor's kind. *)
   Parameter F : Type -> Type.
@@ -127,13 +127,13 @@ Module ListPlayground.
   Import Coq.Lists.List.
   Import ListNotations.
 
-  Compute S <$> (fun x => x * 5) <$> [1;2;3;4;5;6;7].
+  Compute S <$> ((fun x => x * 5) <$> [1;2;3;4;5;6;7]).
   Compute (fun x => x * x) <$>
-          (fun x => match x with None => 0 | Some y => y end) <$>
-          [None; Some 1; Some 2; None; None; None; Some 3; Some 4; Some 5; None].
+          ((fun x => match x with None => 0 | Some y => y end) <$>
+          [None; Some 1; Some 2; None; None; None; Some 3; Some 4; Some 5; None]).
   Compute fmap (fun x => x * x) <$>
-          fmap (fun x => x + 1) <$>
-          [None; Some 1; Some 2; None; None; None; Some 3; Some 4; Some 5; None].
+          (fmap (fun x => x + 1) <$>
+          [None; Some 1; Some 2; None; None; None; Some 3; Some 4; Some 5; None]).
 End ListPlayground.
 
 (** Functor Functor *)
