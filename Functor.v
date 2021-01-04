@@ -1,15 +1,6 @@
 Require Export Coq.Logic.FunctionalExtensionality.
 Require Coq.Lists.List.
-
-(** * Auxilary Definitions *)
-
-Definition pipeline {A B : Type} (x : A) (f : A -> B) : B := f x.
-
-Definition compose {A B C : Type} (g : B -> C) (f : A -> B) : A -> C := fun a => g (f a).
-
-Infix "▷" := pipeline (at level 45, left associativity).
-
-Infix "∘" := compose (at level 40, left associativity).
+Require Import TypeClassLib.Auxilary.
 
 (** * Functor Type Class *)
 
@@ -181,14 +172,6 @@ End FFunctorPlayground.
 (** * Parameterized Functors *)
 
 (** Either *)
-
-Inductive either (A B : Type) : Type :=
-| Left  (a : A)
-| Right (b : B).
-
-Arguments Left  {A} {B}.
-Arguments Right {A} {B}.
-
 Module FEither.
   Section EitherSpec.
     Context {A : Type}.
@@ -252,14 +235,6 @@ Instance ArrowFunctor (A : Type) : Functor (fun B => A -> B) :=
     fmap_compose := @FArrow.fmap_compose A }.
 
 (** Binary Trees *)
-
-Inductive tree (K V : Type) :=
-  | Leaf
-  | Node (k : K) (v : V) (l r : tree K V).
-
-Arguments Leaf {K} {V}.
-Arguments Node {K} {V}.
-
 Module FTree.
   Section TreeSpec.
     Context {K : Type}.
