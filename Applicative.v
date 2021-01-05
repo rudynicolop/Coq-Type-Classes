@@ -1,6 +1,4 @@
-Require Export Coq.Logic.FunctionalExtensionality.
 Require Coq.Lists.List.
-Require Import TypeClassLib.Auxilary.
 Require Export TypeClassLib.Functor.
 
 (** * Applicative Functor Type Class *)
@@ -31,12 +29,6 @@ Definition liftA3 {A B C D : Type} {F : Type -> Type} `{Applicative F}
            (h : A -> B -> C -> D) (a : F A) (b : F B) (c : F C) : F D :=
   h <$> a <*> b <*> c.
 (**[]*)
-
-Lemma f_2_arg :
-  forall {A B C : Type}
-    (f : A -> B -> C) (a1 a2 : A) (b : B),
-    a1 = a2 -> f a1 b = f a2 b.
-Proof. intros; subst; reflexivity. Qed.
 
 (** * Applicative Functor Specification *)
 Module Type ApplicativeSpec <: FunctorSpec.
@@ -361,9 +353,6 @@ Module AApplicative (Q R : ApplicativeSpec) <: ApplicativeSpec.
     apply Q.app_homomorphism.
   Qed.
 
-  Module RF := FunctorFactory R.
-  Definition RFI : Functor R.F := RF.FI.
-
   Lemma app_interchange : forall {A B : Type} (f : F (A -> B)) (a : A),
       fapp f (pure a) = fapp (pure (fun h => h a)) f.
   Proof.
@@ -385,12 +374,11 @@ Module AApplicative (Q R : ApplicativeSpec) <: ApplicativeSpec.
   Proof.
     intros. unfold fapp, pure.
     repeat rewrite R.app_fmap_pure.
-    (* unfold compose. rewrite R.app_homomorphism. *)
     repeat rewrite R.app_composition with (h0 := R.pure Q.fapp).
-    (* unfold compose. *) repeat rewrite R.app_homomorphism.
+    repeat rewrite R.app_homomorphism.
     rewrite R.app_composition with (R.fapp (R.pure Q.fapp) f)
                                    (R.fapp (R.pure Q.fapp) h) a.
-    apply f_2_arg. (* unfold compose. *) repeat rewrite R.app_homomorphism.
+    apply f_2_arg. repeat rewrite R.app_homomorphism.
     repeat rewrite <- R.app_fmap_pure.
     pose proof @R.fmap_compose as H. unfold compose in H.
     pose proof H _ _ _ Q.fapp (@compose (Q.F A) (Q.F B) (Q.F C)) as H'.

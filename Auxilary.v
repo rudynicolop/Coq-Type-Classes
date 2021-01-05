@@ -10,6 +10,12 @@ Infix "▷" := pipeline (at level 45, left associativity).
 
 Infix "∘" := compose (at level 40, left associativity).
 
+Lemma f_2_arg :
+  forall {A B C : Type}
+    (f : A -> B -> C) (a1 a2 : A) (b : B),
+    a1 = a2 -> f a1 b = f a2 b.
+Proof. intros; subst; reflexivity. Qed.
+
 (** The Either data type. *)
 Inductive either (A B : Type) : Type :=
 | Left  (a : A)
@@ -25,3 +31,9 @@ Inductive tree (K V : Type) :=
 
 Arguments Leaf {K} {V}.
 Arguments Node {K} {V}.
+
+(** Because Coq disallows
+    Modules parameterized by types... *)
+Module Type TypeParam.
+  Parameter T : Type.
+End TypeParam.
