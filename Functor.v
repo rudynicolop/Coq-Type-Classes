@@ -102,7 +102,7 @@ Module FList <: FunctorSpec.
 
   Definition F : Type -> Type := list.
 
-  Definition fmap := map.
+  Definition fmap {A B : Type} (f : A -> B) := map f.
 
   Lemma fmap_id : forall {A : Type},
       map (fun x : A => x) = (fun x : list A => x).
