@@ -248,7 +248,7 @@ End ArrowFunctorFactory.
 Module FTree (M : TypeParam) <: FunctorSpec.
   Definition K : Type := M.T.
 
-  Definition F : Type -> Type := fun V => tree K V.
+  Definition F : Type -> Type := tree K.
 
   Fixpoint fmap {V R : Type} (f : V -> R) (t : tree K V) : tree K R :=
     match t with

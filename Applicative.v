@@ -15,8 +15,7 @@ Class Applicative (F : Type -> Type) `{Functor F} :=
     app_composition : forall {A B C : Type} (f : F (A -> B)) (h : F (B -> C)) (a : F A),
         fapp h (fapp f a) = fapp (fapp (fapp (pure (@compose A B C)) h) f) a;
     app_fmap_pure : forall {A B : Type} (f : A -> B),
-        fmap f = fapp (pure f);
-}.
+        fmap f = fapp (pure f) }.
 
 Infix "<*>" := fapp (at level 43, left associativity).
 
@@ -72,7 +71,7 @@ Module ApplicativeFactory (A : ApplicativeSpec).
       app_homomorphism _ _ := A.app_homomorphism;
       app_composition _ _ _ := A.app_composition;
       app_interchange _ _ := A.app_interchange;
-      app_fmap_pure _ _ := A.app_fmap_pure; }.
+      app_fmap_pure _ _ := A.app_fmap_pure }.
 End ApplicativeFactory.
 
 (** Identity. *)
