@@ -52,3 +52,96 @@ Module MonadFactory (MS : MonadSpec).
       pure_right _ := MS.pure_right;
       bind_assoc _ _ _ := MS.bind_assoc }.
 End MonadFactory.
+
+(** Identity *)
+Module MIdentity <: MonadSpec.
+  Include AIdentity.
+  Definition M : Type -> Type := id.
+
+  Definition bind {A B : Type} : A -> (A -> B) -> B := pipeline.
+
+  Lemma pure_left : forall {A B : Type} (a : A) (f : A -> B),
+      bind (pure a) f = f a.
+  Proof. intros. reflexivity. Qed.
+
+  Lemma pure_right : forall {A : Type} (m : A),
+      bind m pure = m.
+  Proof. intros. reflexivity. Qed.
+
+  Lemma bind_assoc : forall {A B C : Type} (m : A) (k : A -> B) (h : B -> C),
+      bind m (fun a => bind (k a) h) = bind (bind m k) h.
+  Proof. intros. reflexivity. Qed.
+End MIdentity.
+
+Module MFI := MonadFactory MIdentity.
+Definition MI : Monad id := MFI.MI.
+
+(** Option *)
+Module MOption <: MonadSpec.
+  Include AOption.
+
+  Definition M : Type -> Type := option.
+
+  Definition bind {A B : Type} (m : M A) (f : A -> M B) : M B :=
+    match m with
+    | None   => None
+    | Some a => f a
+    end.
+  (**[]*)
+
+  Lemma pure_left : forall {A B : Type} (a : A) (f : A -> option B),
+      bind (pure a) f = f a.
+  Proof. intros. reflexivity. Qed.
+
+  Lemma pure_right : forall {A : Type} (m : option A),
+      bind m pure = m.
+  Proof. intros. destruct m; reflexivity. Qed.
+
+  Lemma bind_assoc : forall {A B C : Type} (m : option A) (k : A -> option B) (h : B -> option C),
+      bind m (fun a => bind (k a) h) = bind (bind m k) h.
+  Proof. intros. destruct m; reflexivity. Qed.
+End MOption.
+
+Module MFO := MonadFactory MOption.
+Definition MO : Monad option := MFO.MI.
+
+Compute Some 5 >>= (fun x => pure (x * x)) >>= (fun y => pure (y + y)).
+Compute Some 5 >>= (fun _ => None) >>= (fun y => pure (y + y)).
+Compute x <- Some 5;; y <- Some 6;; pure (x * y).
+
+(** List *)
+Module MList <: MonadSpec.
+  Import Coq.Lists.List.
+  Import ListNotations.
+
+  Include AList.
+  Definition M : Type -> Type := list.
+
+  Definition bind {A B : Type} (l : list A) (f : A -> list B) : list B :=
+    flat_map f l.
+  (**[]*)
+
+  Lemma pure_left : forall {A B : Type} (a : A) (f : A -> list B),
+      bind (pure a) f = f a.
+  Proof. intros. simpl. apply app_nil_r. Qed.
+
+  Lemma pure_right : forall {A : Type} (m : list A),
+      bind m pure = m.
+  Proof.
+    intros. unfold bind.
+    induction m; auto.
+    simpl. apply f_equal. assumption.
+  Qed.
+
+  Lemma bind_assoc : forall {A B C : Type} (m : list A) (k : A -> list B) (h : B -> list C),
+      bind m (fun a => bind (k a) h) = bind (bind m k) h.
+  Proof.
+    intros. unfold bind.
+    induction m as [| a t IHt]; simpl in *; auto.
+    rewrite IHt; clear IHt. Search (flat_map _ _ ++ flat_map _ _).
+    rewrite flat_map_app. reflexivity.
+  Qed.
+End MList.
+
+Module MLF := MonadFactory MList.
+Definition ML : Monad list := MLF.MI.
