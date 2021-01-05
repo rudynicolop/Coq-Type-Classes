@@ -21,6 +21,43 @@ Infix ">>=" := bind (at level 43, left associativity).
 
 Notation "a <- ma ;; mb" := (bind ma (fun a => mb)) (at level 100, right associativity).
 
+Definition mcompose {A B C : Type} {M : Type -> Type} `{Monad M}
+           (f : A -> M B) (h : B -> M C) (a : A) : M C := f a >>= h.
+
+Infix ">=>" := mcompose (at level 44, right associativity).
+
+(** The Monad Laws (more elegeantly)
+    in terms of Composition. *)
+
+(** Left [pure] is idempotent. *)
+Lemma left_pure_idem :
+  forall {A B : Type} {M : Type -> Type} `{HM : Monad M} (f : A -> M B),
+    pure >=> f = f.
+Proof.
+  intros. unfold mcompose.
+  extensionality a. apply pure_left.
+Qed.
+
+(** Right [pure] is idempotent. *)
+Lemma right_pure_idem :
+  forall {A B : Type} {M : Type -> Type} `{HM : Monad M} (f : A -> M B),
+    f >=> pure = f.
+Proof.
+  intros. unfold mcompose.
+  extensionality a. apply pure_right.
+Qed.
+
+(** Composition is associative. *)
+Lemma mcompose_assoc :
+  forall {A B C D : Type} {M : Type -> Type} `{HM : Monad M}
+    (f : A -> M B) (h : B -> M C) (k : C -> M D),
+    (f >=> h) >=> k = f >=> h >=> k.
+Proof.
+  intros. unfold mcompose.
+  extensionality a. rewrite bind_assoc.
+  reflexivity.
+Qed.
+
 (** * Monad Specification *)
 Module Type MonadSpec <: ApplicativeSpec.
   Include ApplicativeSpec.
