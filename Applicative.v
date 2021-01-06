@@ -594,3 +594,58 @@ Module TreeApplicativeSpec <: ParamApplicativeSpec.
     Admitted.
   End Spec.
 End TreeApplicativeSpec.
+
+(** State. *)
+Module StateApplicativeSpec <: ParamApplicativeSpec.
+  Include StateFunctorSpec.
+
+  Section Spec.
+    Context {S : Type}.
+
+    Definition pure {A : Type} (a : A) : state S A := fun st => (a, st).
+
+    Definition fapp {A B : Type} (f : state S (A -> B)) (sa : state S A) : state S B :=
+      fun st => let (f, st) := f st in
+             let (a, st) := sa st in (f a, st).
+
+    Lemma app_identity : forall {A : Type} (sa : state S A),
+        fapp (pure (fun x => x)) sa = sa.
+    Proof.
+      intros. extensionality st. unfold fapp, pure.
+      destruct (sa st) as [a st']. reflexivity.
+    Qed.
+
+    Lemma app_homomorphism : forall {A B : Type} (f : A -> B) (a : A),
+        fapp (pure f) (pure a) = pure (f a).
+    Proof. intros. extensionality st. unfold fapp, pure. reflexivity. Qed.
+
+    Lemma app_interchange : forall {A B : Type} (f : state S (A -> B)) (a : A),
+        fapp f (pure a) = fapp (pure (fun h => h a)) f.
+    Proof.
+      intros. extensionality st.
+      unfold fapp, pure. reflexivity.
+    Qed.
+
+    Lemma app_composition :
+      forall {A B C : Type} (f : state S (A -> B))
+        (h : state S (B -> C)) (s : state S A),
+        fapp h (fapp f s) = fapp (fapp (fapp (pure (@compose A B C)) h) f) s.
+    Proof.
+      intros. extensionality st. unfold fapp, pure, compose.
+      destruct (h st) as [b st']. destruct (f st') as [k st''].
+      destruct (s st'') as [a' st''']. reflexivity.
+    Qed.
+
+    Lemma app_fmap_pure : forall {A B : Type} (f : A -> B),
+        fmap f = fapp (pure f).
+    Proof.
+      intros. extensionality s. extensionality st.
+      unfold fmap, fapp, pure. unfold compose. reflexivity.
+    Qed.
+  End Spec.
+End StateApplicativeSpec.
+
+Module StateApplicativeFactory :=
+  ParamApplicativeFactory StateApplicativeSpec.
+Definition StateApplicative (S : Type) : Applicative (state S) :=
+  StateApplicativeFactory.ParamApplicativeInstance S.

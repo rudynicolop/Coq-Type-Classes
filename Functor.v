@@ -185,15 +185,19 @@ Module Type ParamFunctorSpec.
   (** The Functor's kind. *)
   Parameter F : Type -> Type -> Type.
 
-  Parameter fmap : forall {A B C : Type}, (B -> C) -> F A B -> F A C.
+  Section Spec.
+    Context {A : Type}.
 
-  (** Functor Laws. *)
+    Parameter fmap : forall {B C : Type}, (B -> C) -> F A B -> F A C.
 
-  Axiom fmap_id : forall {A B : Type},
-      fmap (fun x : B => x) = (fun x : F A B => x).
+    (** Functor Laws. *)
 
-  Axiom fmap_compose : forall {A B C D : Type} (h : B -> C) (k : C -> D),
-      @fmap A _ _ (k ∘ h) = fmap k ∘ fmap h.
+    Axiom fmap_id : forall {B : Type},
+        fmap (fun x : B => x) = (fun x : F A B => x).
+
+    Axiom fmap_compose : forall {B C D : Type} (h : B -> C) (k : C -> D),
+        fmap (k ∘ h) = fmap k ∘ fmap h.
+  End Spec.
 End ParamFunctorSpec.
 
 (** A Parameterized-Functor Factory. *)
@@ -305,3 +309,36 @@ End TreeFunctorSpec.
 Module TreeFunctorFactory := ParamFunctorFactory TreeFunctorSpec.
 Definition TreeFunctor (K : Type) : Functor (tree K) :=
   TreeFunctorFactory.ParamFunctorInstance K.
+(**[]*)
+
+(** State *)
+Module StateFunctorSpec <: ParamFunctorSpec.
+  Definition F : Type -> Type -> Type := state.
+
+  Section Spec.
+    Context {S : Type}.
+
+    Definition fmap {A B : Type} (f : A -> B) (sa : state S A) : state S B :=
+      (fun '(a, st) => (f a, st)) ∘ sa.
+
+    Lemma fmap_id : forall {A : Type},
+        fmap (fun x : A => x) = (fun x : state S A => x).
+    Proof.
+      intros. extensionality sa. extensionality st.
+      unfold fmap. unfold compose. destruct (sa st); auto.
+    Qed.
+
+    Lemma fmap_compose : forall {A B C : Type} (h : A -> B) (k : B -> C),
+        fmap (k ∘ h) = fmap k ∘ fmap h.
+    Proof.
+      intros. extensionality sa.
+      extensionality st. unfold fmap. unfold compose.
+      destruct (sa st) as [a st']. reflexivity.
+    Qed.
+  End Spec.
+End StateFunctorSpec.
+
+Module StateFunctorFactory := ParamFunctorFactory StateFunctorSpec.
+Definition StateFunctor (S : Type) : Functor (state S) :=
+  StateFunctorFactory.ParamFunctorInstance S.
+(**[]*)

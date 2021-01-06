@@ -37,3 +37,6 @@ Arguments Node {K} {V}.
 Module Type TypeParam.
   Parameter T : Type.
 End TypeParam.
+
+(** State. *)
+Definition state (S A : Type) : Type := S -> A * S.
