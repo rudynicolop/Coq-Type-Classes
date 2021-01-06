@@ -510,3 +510,44 @@ Module EitherApplicativeFactory := ParamApplicativeFactory EitherApplicativeSpec
 Definition EitherApplicative (A : Type) : Applicative (either A) :=
   EitherApplicativeFactory.ParamApplicativeInstance A.
 (**[]*)
+
+(** Arrow *)
+Module ArrowApplicativeSpec <: ParamApplicativeSpec.
+  Include ArrowFunctorSpec.
+
+  Section Spec.
+    Context {A : Type}.
+
+    Definition pure {B : Type} (b : B) : A -> B := fun a => b.
+
+    (** The S-Combinator! Wow! *)
+    Definition fapp {B C : Type} (f : A -> B -> C) (h : A -> B) : A -> C :=
+      fun a => f a (h a).
+    (**[]*)
+
+    Lemma app_identity : forall {B : Type} (b : A -> B),
+        fapp (pure (fun x => x)) b = b.
+    Proof. intros. reflexivity. Qed.
+
+    Lemma app_homomorphism : forall {B C : Type} (f : B -> C) (b : B),
+        fapp (pure f) (pure b) = pure (f b).
+    Proof. intros. extensionality a. reflexivity. Qed.
+
+    Lemma app_interchange : forall {B C : Type} (f : A -> B -> C) (b : B),
+        fapp f (pure b) = fapp (pure (fun h => h b)) f.
+    Proof. intros. extensionality a. reflexivity. Qed.
+
+    Lemma app_composition :
+      forall {B C D : Type} (f : A -> B -> C) (h : A -> C -> D) (b : A -> B),
+        fapp h (fapp f b) = fapp (fapp (fapp (pure (@compose B C D)) h) f) b.
+    Proof. intros. extensionality a. reflexivity. Qed.
+
+    Lemma app_fmap_pure : forall {B C : Type} (f : B -> C),
+        fmap f = fapp (pure f).
+    Proof. intros. extensionality h. extensionality a. reflexivity. Qed.
+  End Spec.
+End ArrowApplicativeSpec.
+
+Module ArrowApplicativeFactory := ParamApplicativeFactory ArrowApplicativeSpec.
+Definition ArrowApplicative (A : Type) : Applicative (fun B => A -> B) :=
+  ArrowApplicativeFactory.ParamApplicativeInstance A.
