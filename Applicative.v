@@ -64,7 +64,7 @@ End ApplicativeSpec.
 Module ApplicativeFactory (A : ApplicativeSpec).
   Include FunctorFactory A.
 
-  Instance AI : Applicative A.F :=
+  Instance ApplicativeInstance : Applicative A.F :=
     { pure _ := A.pure;
       fapp _ _ := A.fapp;
       app_identity _ := A.app_identity;
@@ -75,8 +75,8 @@ Module ApplicativeFactory (A : ApplicativeSpec).
 End ApplicativeFactory.
 
 (** Identity. *)
-Module AIdentity <: ApplicativeSpec.
-  Include FIdentity.
+Module IdentityApplicativeSpec <: ApplicativeSpec.
+  Include IdentityFunctorSpec.
 
   Definition pure {A : Type} (a : A) := a.
 
@@ -102,14 +102,15 @@ Module AIdentity <: ApplicativeSpec.
   Lemma app_fmap_pure : forall {A B : Type} (f : A -> B),
       fmap f = fapp (pure f).
   Proof. intros. reflexivity. Qed.
-End AIdentity.
+End IdentityApplicativeSpec.
 
-Module AId := ApplicativeFactory AIdentity.
-Definition IdentityApplicative : Applicative id := AId.AI.
+Module IdentityApplicativeFactory := ApplicativeFactory IdentityApplicativeSpec.
+Definition IdentityApplicative : Applicative id :=
+  IdentityApplicativeFactory.ApplicativeInstance.
 
 (** Option. *)
-Module AOption <: ApplicativeSpec.
-  Include FOption.
+Module OptionApplicativeSpec <: ApplicativeSpec.
+  Include OptionFunctorSpec.
 
   Definition pure {A : Type} : A -> option A := Some.
 
@@ -143,10 +144,11 @@ Module AOption <: ApplicativeSpec.
     intros. extensionality a.
     destruct a; reflexivity.
   Qed.
-End AOption.
+End OptionApplicativeSpec.
 
-Module AO := ApplicativeFactory AOption.
-Definition OptionApplicative : Applicative option := AO.AI.
+Module OptionApplicativeFactory := ApplicativeFactory OptionApplicativeSpec.
+Definition OptionApplicative : Applicative option :=
+  OptionApplicativeFactory.ApplicativeInstance.
 
 Compute (fun x y => x + y) <$> Some 3 <*> Some 4.
 Compute (fun x y => (x,y)) <$> Some 42 <*> Some 69.
@@ -155,11 +157,11 @@ Compute (fun x y z => x * y + x * z) <$>
 Compute (fun x y z => x * y + x * z) <$>
         Some 42 <*> None <*> Some 3.
 
-Module AList <: ApplicativeSpec.
+Module ListApplicativeSpec <: ApplicativeSpec.
   Import Coq.Lists.List.
   Import ListNotations.
 
-  Include FList.
+  Include ListFunctorSpec.
 
   Definition pure {A : Type} (a : A) : list A := [a].
 
@@ -220,14 +222,19 @@ Module AList <: ApplicativeSpec.
     destruct a as [| h t]; auto.
     simpl. rewrite app_nil_r. reflexivity.
   Qed.
-End AList.
+End ListApplicativeSpec.
 
-Module AL := ApplicativeFactory AList.
-Definition ListApplicative : Applicative list := AL.AI.
+Module ListApplicativeFactory := ApplicativeFactory ListApplicativeSpec.
+Definition ListApplicative : Applicative list :=
+  ListApplicativeFactory.ApplicativeInstance.
+(**[]*)
 
 Module ListPlayground.
   Import Coq.Lists.List.
   Import ListNotations.
+
+  Module AOption := OptionApplicativeSpec.
+  Module AList := ListApplicativeSpec.
 
   Compute pure mult <*> [2;3;4] <*> pure 4.
   Compute mult <$> [2;3;4;5] <*> pure 4.
@@ -320,10 +327,10 @@ Module ListPlayground.
              (a : list (option A)) : list (option B) := fapp <$> fs <*> a.
 End ListPlayground.
 
-(** Composing Applicatives. *)
-Module AApplicative (Q R : ApplicativeSpec) <: ApplicativeSpec.
+(** Applicative Composition *)
+Module ApplicativeCompose (Q R : ApplicativeSpec) <: ApplicativeSpec.
   (** Composing the Functors. *)
-  Module QR := FFunctor Q R.
+  Module QR := FunctorCompose Q R.
   Include QR.
 
   Definition pure {A : Type} : A -> F A := R.pure ∘ Q.pure.
@@ -391,9 +398,12 @@ Module AApplicative (Q R : ApplicativeSpec) <: ApplicativeSpec.
     unfold compose. repeat rewrite R.app_homomorphism.
     repeat rewrite <- R.app_fmap_pure.
     pose proof H _ _ _
-         (fun (a0 : Q.F (B -> C)) (f0 : Q.F (A -> B) -> Q.F A -> Q.F B) (a1 : Q.F (A -> B)) (a2 : Q.F A)
+         (fun (a0 : Q.F (B -> C))
+            (f0 : Q.F (A -> B) -> Q.F A -> Q.F B)
+            (a1 : Q.F (A -> B)) (a2 : Q.F A)
           => Q.fapp a0 (f0 a1 a2))
-         (fun h0 : (Q.F (A -> B) -> Q.F A -> Q.F B) -> Q.F (A -> B) -> Q.F A -> Q.F C => h0 Q.fapp) as H'.
+         (fun h0 : (Q.F (A -> B) -> Q.F A -> Q.F B) ->
+                 Q.F (A -> B) -> Q.F A -> Q.F C => h0 Q.fapp) as H'.
     apply equal_f with h in H'. rewrite <- H'; clear H'. apply f_2_arg.
     extensionality q. extensionality r. extensionality s.
     rewrite Q.app_composition. reflexivity.
@@ -407,4 +417,4 @@ Module AApplicative (Q R : ApplicativeSpec) <: ApplicativeSpec.
     apply f_equal. symmetry. rewrite Q.app_fmap_pure.
     apply R.app_homomorphism.
   Qed.
-End AApplicative.
+End ApplicativeCompose.

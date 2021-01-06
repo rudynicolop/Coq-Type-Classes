@@ -38,14 +38,14 @@ End FunctorSpec.
 
 (** Generate a Functor Instance from a specification. *)
 Module FunctorFactory (FS : FunctorSpec).
-  Instance FI : Functor FS.F :=
+  Instance FunctorInstance : Functor FS.F :=
     { fmap _ _ := FS.fmap;
       fmap_id _ := FS.fmap_id;
       fmap_compose _ _ _ := FS.fmap_compose }.
 End FunctorFactory.
 
 (** Identity *)
-Module FIdentity <: FunctorSpec.
+Module IdentityFunctorSpec <: FunctorSpec.
   Definition F : Type -> Type := fun t => t.
 
   Definition fmap {A B : Type} (f : A -> B) (a : A) : B := f a.
@@ -57,15 +57,17 @@ Module FIdentity <: FunctorSpec.
   Lemma fmap_compose : forall {A B C : Type} (f : A -> B) (g : B -> C),
       fmap (g ∘ f) = fmap g ∘ fmap f.
   Proof. intros. unfold fmap, compose. reflexivity. Qed.
-End FIdentity.
+End IdentityFunctorSpec.
 
-Module FI := FunctorFactory FIdentity.
-Definition IdentityFunctor : Functor (fun t => t) := FI.FI.
+Module IdentityFunctorFactory := FunctorFactory IdentityFunctorSpec.
+Definition IdentityFunctor : Functor id :=
+  IdentityFunctorFactory.FunctorInstance.
+(**[]*)
 
 Compute S <$> 4.
 
 (** Option *)
-Module FOption <: FunctorSpec.
+Module OptionFunctorSpec <: FunctorSpec.
   Definition F : Type -> Type := option.
 
   Definition fmap {A B : Type} (f : A -> B) (oa : option A) :=
@@ -88,22 +90,24 @@ Module FOption <: FunctorSpec.
     intros. unfold fmap, compose.
     extensionality oa. destruct oa as [a |]; reflexivity.
   Qed.
-End FOption.
+End OptionFunctorSpec.
 
-Module FO := FunctorFactory FOption.
-Definition OptionFunctor : Functor option := FO.FI.
+Module OptionFunctorFactory := FunctorFactory OptionFunctorSpec.
+Definition OptionFunctor : Functor option :=
+  OptionFunctorFactory.FunctorInstance.
+(**[]*)
 
 Compute S <$> None.
 Compute S <$> (Some 41).
 
 (** List *)
-Module FList <: FunctorSpec.
+Module ListFunctorSpec <: FunctorSpec.
   Import Coq.Lists.List.
   Import ListNotations.
 
   Definition F : Type -> Type := list.
 
-  Definition fmap {A B : Type} (f : A -> B) := map f.
+  Definition fmap {A B : Type} (f : A -> B) : list A -> list B := map f.
 
   Lemma fmap_id : forall {A : Type},
       map (fun x : A => x) = (fun x : list A => x).
@@ -119,10 +123,12 @@ Module FList <: FunctorSpec.
     induction l as [| h t IHt]; auto.
     cbn. rewrite IHt. unfold compose. reflexivity.
   Qed.
-End FList.
+End ListFunctorSpec.
 
-Module FL := FunctorFactory FList.
-Definition ListFunctor : Functor list := FL.FI.
+Module ListFunctorFactory := FunctorFactory ListFunctorSpec.
+Definition ListFunctor : Functor list :=
+  ListFunctorFactory.FunctorInstance.
+(**[]*)
 
 Module ListPlayground.
   Import Coq.Lists.List.
@@ -137,8 +143,8 @@ Module ListPlayground.
           [None; Some 1; Some 2; None; None; None; Some 3; Some 4; Some 5; None]).
 End ListPlayground.
 
-(** Functor Functor *)
-Module FFunctor (M Q : FunctorSpec) <: FunctorSpec.
+(** Functor Composition *)
+Module FunctorCompose (M Q : FunctorSpec) <: FunctorSpec.
   Definition F : Type -> Type := fun T => Q.F (M.F T).
 
   Definition fmap {A B : Type} (f : A -> B) : F A -> F B := Q.fmap (M.fmap f).
@@ -156,124 +162,146 @@ Module FFunctor (M Q : FunctorSpec) <: FunctorSpec.
     intros. unfold fmap.
     rewrite M.fmap_compose. apply Q.fmap_compose.
   Qed.
-End FFunctor.
+End FunctorCompose.
 
-Module FFunctorPlayground.
-  Module FOL' := FFunctor FOption FList.
+Module ComposePlayground.
+  Module FOL' := FunctorCompose OptionFunctorSpec ListFunctorSpec.
   Module FOL  := FunctorFactory FOL'.
-  Instance OptionListFunctor : Functor (list ∘ option) := FOL.FI.
+  Instance OptionListFunctor : Functor (list ∘ option) := FOL.FunctorInstance.
 
   Import Coq.Lists.List.
   Import ListNotations.
 
   Compute (fun x => x * x) <$>
           [None; Some 1; Some 2; None; None; None; Some 3; Some 4; Some 5; None].
-End FFunctorPlayground.
+End ComposePlayground.
 
 (** * Parameterized Functors *)
 
-Module Type ParamFunctorSpec (M : TypeParam) <: FunctorSpec.
-  Include FunctorSpec.
+(* Class ParamFunctor
+   (F : Type -> Type -> Type) (A : Type) `{Functor (F A)}. *)
+
+Module Type ParamFunctorSpec.
+  (** The Functor's kind. *)
+  Parameter F : Type -> Type -> Type.
+
+  Parameter fmap : forall {A B C : Type}, (B -> C) -> F A B -> F A C.
+
+  (** Functor Laws. *)
+
+  Axiom fmap_id : forall {A B : Type},
+      fmap (fun x : B => x) = (fun x : F A B => x).
+
+  Axiom fmap_compose : forall {A B C D : Type} (h : B -> C) (k : C -> D),
+      @fmap A _ _ (k ∘ h) = fmap k ∘ fmap h.
 End ParamFunctorSpec.
 
 (** A Parameterized-Functor Factory. *)
-Module ParamFunctorFactory (TM : TypeParam) (FM : ParamFunctorSpec).
-  Module PF := FM TM.
-  Include FunctorFactory PF.
+Module ParamFunctorFactory (FS : ParamFunctorSpec).
+  Instance ParamFunctorInstance (A : Type) : Functor (FS.F A) :=
+    { fmap := @FS.fmap A;
+      fmap_id := @FS.fmap_id A;
+      fmap_compose := @FS.fmap_compose A }.
 End ParamFunctorFactory.
 
 (** Either *)
-Module FEither (M : TypeParam) <: FunctorSpec.
-  Definition A : Type := M.T.
+Module EitherFunctorSpec <: ParamFunctorSpec.
+  Definition F : Type -> Type -> Type := either.
 
-  Definition F : Type -> Type := either A.
+  Section Spec.
+    Context {A : Type}.
 
-  Definition fmap {B C : Type} (f : B -> C) (e : either A B) : either A C :=
-    match e with
-    | Left  a => Left a
-    | Right b => Right (f b)
-    end.
-  (**[]*)
+    Definition fmap {B C : Type} (f : B -> C) (e : either A B) : either A C :=
+      match e with
+      | Left  a => Left a
+      | Right b => Right (f b)
+      end.
+    (**[]*)
 
-  Lemma fmap_id : forall {B : Type},
-      fmap (fun x : B => x) = (fun x : either A B => x).
-  Proof.
-    intros. unfold fmap.
-    extensionality e. destruct e as [a | b]; reflexivity.
-  Qed.
+    Lemma fmap_id : forall {B : Type},
+        fmap (fun x : B => x) = (fun x : either A B => x).
+    Proof.
+      intros. unfold fmap.
+      extensionality e. destruct e as [a | b]; reflexivity.
+    Qed.
 
-  Lemma fmap_compose : forall {B C D : Type} (f : B -> C) (g : C -> D),
-      fmap (g ∘ f) = fmap g ∘ fmap f.
-  Proof.
-    intros. extensionality e.
-    unfold fmap, compose. destruct e; reflexivity.
-  Qed.
-End FEither.
+    Lemma fmap_compose : forall {B C D : Type} (f : B -> C) (g : C -> D),
+        fmap (g ∘ f) = fmap g ∘ fmap f.
+    Proof.
+      intros. extensionality e.
+      unfold fmap, compose. destruct e; reflexivity.
+    Qed.
+  End Spec.
+End EitherFunctorSpec.
 
-Module EitherFunctorFactory (MT : TypeParam).
-  Include ParamFunctorFactory MT FEither.
-End EitherFunctorFactory.
+Module EitherFunctorFactory := ParamFunctorFactory EitherFunctorSpec.
+Definition EitherFunctor (A : Type) : Functor (either A) :=
+  EitherFunctorFactory.ParamFunctorInstance A.
 
-(* Compute (fun x => x * x) <$> Left 5. *)
-(* Compute (fun x => x * x) <$> Right 5. *)
+Compute (fun x => x * x) <$> Left 5.
+Compute (fun x => x * x) <$> Right 5.
 
 (** Arrow Types *)
-Module FArrow (M : TypeParam) <: FunctorSpec.
-  Definition A : Type := M.T.
+Module ArrowFunctorSpec <: ParamFunctorSpec.
+  Definition F : Type -> Type -> Type := fun A B => A -> B.
 
-  Definition F : Type -> Type := fun T => A -> T.
+  Section Spec.
+    Context {A : Type}.
 
-  Definition fmap {B C : Type} (h : B -> C) (f : A -> B) := h ∘ f.
+    Definition fmap {B C : Type} (h : B -> C) (f : A -> B) := h ∘ f.
 
-  Lemma fmap_id : forall {B : Type},
-      fmap (fun x : B => x) = (fun x : A -> B => x).
-  Proof.
-    intros. unfold fmap. extensionality f.
-    extensionality a. unfold compose. reflexivity.
-  Qed.
+    Lemma fmap_id : forall {B : Type},
+        fmap (fun x : B => x) = (fun x : A -> B => x).
+    Proof.
+      intros. unfold fmap. extensionality f.
+      extensionality a. unfold compose. reflexivity.
+    Qed.
 
-  Lemma fmap_compose : forall {B C D : Type} (h : B -> C) (g : C -> D),
-      fmap (g ∘ h) = fmap g ∘ fmap h.
-  Proof.
-    intros. unfold fmap. extensionality f.
-    extensionality a. unfold compose. reflexivity.
-  Qed.
-End FArrow.
+    Lemma fmap_compose : forall {B C D : Type} (h : B -> C) (g : C -> D),
+        fmap (g ∘ h) = fmap g ∘ fmap h.
+    Proof.
+      intros. unfold fmap. extensionality f.
+      extensionality a. unfold compose. reflexivity.
+    Qed.
+  End Spec.
+End ArrowFunctorSpec.
 
-Module ArrowFunctorFactory (MT : TypeParam).
-  Include ParamFunctorFactory MT FArrow.
-End ArrowFunctorFactory.
+Module ArrowFunctorFactory := ParamFunctorFactory ArrowFunctorSpec.
+Definition ArrowFunctor (A : Type) : Functor (fun B => A -> B) :=
+  ArrowFunctorFactory.ParamFunctorInstance A.
 
 (** Binary Trees *)
-Module FTree (M : TypeParam) <: FunctorSpec.
-  Definition K : Type := M.T.
+Module TreeFunctorSpec <: ParamFunctorSpec.
+  Definition F : Type -> Type -> Type := tree.
 
-  Definition F : Type -> Type := tree K.
+  Section Spec.
+    Context {K : Type}.
 
-  Fixpoint fmap {V R : Type} (f : V -> R) (t : tree K V) : tree K R :=
-    match t with
-    | Leaf => Leaf
-    | Node k v l r => Node k (f v) (fmap f l) (fmap f r)
-    end.
-  (**[]*)
+    Fixpoint fmap {V R : Type} (f : V -> R) (t : tree K V) : tree K R :=
+      match t with
+      | Leaf => Leaf
+      | Node k v l r => Node k (f v) (fmap f l) (fmap f r)
+      end.
+    (**[]*)
 
-  Lemma fmap_id : forall {V : Type},
-      fmap (fun v : V => v) = (fun t : tree K V => t).
-  Proof.
-    intros. extensionality t.
-    induction t as [| k v l IHl r IHr]; cbn; auto.
-    rewrite IHl. rewrite IHr. reflexivity.
-  Qed.
+    Lemma fmap_id : forall {V : Type},
+        fmap (fun v : V => v) = (fun t : tree K V => t).
+    Proof.
+      intros. extensionality t.
+      induction t as [| k v l IHl r IHr]; cbn; auto.
+      rewrite IHl. rewrite IHr. reflexivity.
+    Qed.
 
-  Lemma fmap_compose : forall {V W Z : Type} (h : V -> W) (g : W -> Z),
-      fmap (g ∘ h) = fmap g ∘ fmap h.
-  Proof.
-    intros. extensionality t.
-    induction t as [| k v l IHl r IHr]; cbn; auto.
-    rewrite IHl. rewrite IHr. reflexivity.
-  Qed.
-End FTree.
+    Lemma fmap_compose : forall {V W Z : Type} (h : V -> W) (g : W -> Z),
+        fmap (g ∘ h) = fmap g ∘ fmap h.
+    Proof.
+      intros. extensionality t.
+      induction t as [| k v l IHl r IHr]; cbn; auto.
+      rewrite IHl. rewrite IHr. reflexivity.
+    Qed.
+  End Spec.
+End TreeFunctorSpec.
 
-Module TreeFunctorFactory (TM : TypeParam).
-  Include ParamFunctorFactory TM FTree.
-End TreeFunctorFactory.
+Module TreeFunctorFactory := ParamFunctorFactory TreeFunctorSpec.
+Definition TreeFunctor (K : Type) : Functor (tree K) :=
+  TreeFunctorFactory.ParamFunctorInstance K.
