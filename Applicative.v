@@ -551,3 +551,46 @@ End ArrowApplicativeSpec.
 Module ArrowApplicativeFactory := ParamApplicativeFactory ArrowApplicativeSpec.
 Definition ArrowApplicative (A : Type) : Applicative (fun B => A -> B) :=
   ArrowApplicativeFactory.ParamApplicativeInstance A.
+
+(** Binary Trees. *)
+Module TreeApplicativeSpec <: ParamApplicativeSpec.
+  Include TreeFunctorSpec.
+
+  Section Spec.
+    Context {K : Type}.
+
+    (** Need a key... *)
+    Definition pure {V : Type} : V -> tree K V := fun _ => Leaf.
+
+    Fixpoint fapp {V R : Type} (f : tree K (V -> R)) (t : tree K V) : tree K R.
+    (* This is really confusing..
+      match f,t with
+      | Leaf, _
+      | _, Leaf                  => Leaf
+      | Node _ f h k, Node k l r =>
+        let l := fapp h
+      end. *)
+    Admitted.
+
+    Lemma app_identity : forall {V : Type} (t : tree K V),
+        fapp (pure (fun x => x)) t = t.
+    Admitted.
+
+    Lemma app_homomorphism : forall {V R : Type} (f : V -> R) (v : V),
+        fapp (pure f) (pure v) = pure (f v).
+    Admitted.
+
+    Lemma app_interchange : forall {V R : Type} (f : tree K (V -> R)) (v : V),
+        fapp f (pure v) = fapp (pure (fun h => h v)) f.
+    Admitted.
+
+    Lemma app_composition :
+      forall {B C D : Type} (f : tree K (B -> C)) (h : tree K (C -> D)) (t : tree K B),
+        fapp h (fapp f t) = fapp (fapp (fapp (pure (@compose B C D)) h) f) t.
+    Admitted.
+
+    Lemma app_fmap_pure : forall {B C : Type} (f : B -> C),
+        fmap f = fapp (pure f).
+    Admitted.
+  End Spec.
+End TreeApplicativeSpec.
