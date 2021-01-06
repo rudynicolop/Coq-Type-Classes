@@ -19,7 +19,8 @@ Class Monad (M : Type -> Type) `{Applicative M} :=
 
 Infix ">>=" := bind (at level 43, left associativity).
 
-Notation "a <- ma ;; mb" := (bind ma (fun a => mb)) (at level 100, right associativity).
+Notation "a <- ma ;; mb" :=
+  (bind ma (fun a => mb)) (at level 100, right associativity).
 
 Definition mcompose {A B C : Type} {M : Type -> Type} `{Monad M}
            (f : A -> M B) (h : B -> M C) (a : A) : M C := f a >>= h.
@@ -188,3 +189,149 @@ End ListMonadSpec.
 Module ListMonadFactory := MonadFactory ListMonadSpec.
 Definition ListMonad : Monad list :=
   ListMonadFactory.MonadInstance.
+(**[]*)
+
+(** * Parameterized Monads *)
+
+Module Type ParamMonadSpec <: ParamApplicativeSpec.
+  Include ParamApplicativeSpec.
+  Definition M : Type -> Type -> Type := F.
+
+  Section Spec.
+    Context {T : Type}.
+
+    Parameter bind : forall {A B : Type}, M T A -> (A -> M T B) -> M T B.
+
+    (** Laws. *)
+
+    (** Promontion to a Monad has no effect. *)
+    Axiom pure_left : forall {A B : Type} (a : A) (f : A -> M T B),
+        bind (pure a) f = f a.
+
+    (** Binding a Monad with [pure] has no effect. *)
+    Axiom pure_right : forall {A : Type} (m : M T A),
+        bind m pure = m.
+
+    (** Associativity of bind. *)
+    Axiom bind_assoc :
+      forall {A B C : Type} (m : M T A) (k : A -> M T B) (h : B -> M T C),
+        bind m (fun a => bind (k a) h) = bind (bind m k) h.
+  End Spec.
+End ParamMonadSpec.
+
+Module ParamMonadFactory (MS : ParamMonadSpec).
+  Include ParamApplicativeFactory MS.
+
+  Instance ParamMonadInstance (T : Type) : Monad (MS.M T) :=
+    { bind := @MS.bind T;
+      pure_left := @MS.pure_left T;
+      pure_right := @MS.pure_right T;
+      bind_assoc := @MS.bind_assoc T }.
+End ParamMonadFactory.
+
+(** Either. *)
+Module EitherMonadSpec <: ParamMonadSpec.
+  Include EitherApplicativeSpec.
+  Definition M : Type -> Type -> Type := either.
+
+  Section Spec.
+    Context {T : Type}.
+
+    Definition bind {A B : Type}
+               (m : either T A) (f : A -> either T B) : either T B :=
+      match m with
+      | Left t  => Left t
+      | Right a => f a
+      end.
+    (**[]*)
+
+    Lemma pure_left : forall {A B : Type} (a : A) (f : A -> either T B),
+        bind (pure a) f = f a.
+    Proof. intros. reflexivity. Qed.
+
+    Lemma pure_right : forall {A : Type} (m : either T A),
+        bind m pure = m.
+    Proof. intros. destruct m; reflexivity. Qed.
+
+    Lemma bind_assoc :
+      forall {A B C : Type} (m : either T A)
+        (k : A -> either T B) (h : B -> either T C),
+        bind m (fun a => bind (k a) h) = bind (bind m k) h.
+    Proof. intros. destruct m; reflexivity. Qed.
+  End Spec.
+End EitherMonadSpec.
+
+Module EitherMonadFactory := ParamMonadFactory EitherMonadSpec.
+Definition EitherMonad (A : Type) : Monad (either A) :=
+  EitherMonadFactory.ParamMonadInstance A.
+(**[]*)
+
+(** Arrow. *)
+Module ArrowMonadSpec <: ParamMonadSpec.
+  Include ArrowApplicativeSpec.
+  Definition M : Type -> Type -> Type := (fun T R => T -> R).
+
+  Section Spec.
+    Context {T : Type}.
+
+    Definition bind {A B : Type}
+               (m : T -> A) (f : A -> T -> B) : T -> B := fun t => f (m t) t.
+    (**[]*)
+
+    Lemma pure_left : forall {A B : Type} (a : A) (f : A -> T -> B),
+        bind (pure a) f = f a.
+    Proof. intros. reflexivity. Qed.
+
+    Lemma pure_right : forall {A : Type} (m : T -> A),
+        bind m pure = m.
+    Proof. intros. reflexivity. Qed.
+
+    Lemma bind_assoc :
+      forall {A B C : Type} (m : T -> A) (k : A -> T -> B) (h : B -> T -> C),
+        bind m (fun a => bind (k a) h) = bind (bind m k) h.
+    Proof. intros. reflexivity. Qed.
+  End Spec.
+End ArrowMonadSpec.
+
+Module ArrowMonadFactory := ParamMonadFactory ArrowMonadSpec.
+Definition ArrowMonad (A : Type) : Monad (fun B => A -> B) :=
+  ArrowMonadFactory.ParamMonadInstance A.
+
+(** State. *)
+Module StateMonadSpec <: ParamMonadSpec.
+  Include StateApplicativeSpec.
+  Definition M : Type -> Type -> Type := F.
+
+  Section Spec.
+    Context {S : Type}.
+
+    Definition bind {A B : Type}
+               (m : state S A) (f : A -> state S B) : state S B :=
+      fun st => let (a, st) := m st in f a st.
+
+    Lemma pure_left : forall {A B : Type} (a : A) (f : A -> state S B),
+        bind (pure a) f = f a.
+    Proof. intros. reflexivity. Qed.
+
+    Lemma pure_right : forall {A : Type} (m : state S A),
+        bind m pure = m.
+    Proof.
+      intros. extensionality st. unfold bind, pure.
+      destruct (m st) ; reflexivity.
+    Qed.
+
+    Lemma bind_assoc :
+      forall {A B C : Type} (m : state S A)
+        (k : A -> state S B) (h : B -> state S C),
+        bind m (fun a => bind (k a) h) = bind (bind m k) h.
+    Proof.
+      intros. extensionality st. unfold bind.
+      destruct (m st); reflexivity.
+    Qed.
+  End Spec.
+End StateMonadSpec.
+
+Module StateMonadFactory := ParamMonadFactory StateMonadSpec.
+Definition StateMonad (S : Type) : Monad (state S) :=
+  StateMonadFactory.ParamMonadInstance S.
+(**[]*)
