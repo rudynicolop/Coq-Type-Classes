@@ -418,3 +418,95 @@ Module ApplicativeCompose (Q R : ApplicativeSpec) <: ApplicativeSpec.
     apply R.app_homomorphism.
   Qed.
 End ApplicativeCompose.
+
+(** * Parameterized Applicatives *)
+
+Module Type ParamApplicativeSpec <: ParamFunctorSpec.
+  Include ParamFunctorSpec.
+
+  Section Spec.
+    Context {A : Type}.
+
+    Parameter pure : forall {B : Type}, B -> F A B.
+
+    Parameter fapp : forall {B C : Type}, F A (B -> C) -> F A B -> F A C.
+
+    (** The identity law. *)
+    Axiom app_identity : forall {B : Type} (b : F A B),
+        fapp (pure (fun x => x)) b = b.
+
+    (** Homomorphism. *)
+    Axiom app_homomorphism : forall {B C : Type} (f : B -> C) (b : B),
+        fapp (pure f) (pure b) = pure (f b).
+
+    (** Interchange. *)
+    Axiom app_interchange : forall {B C : Type} (f : F A (B -> C)) (b : B),
+        fapp f (pure b) = fapp (pure (fun h => h b)) f.
+
+    (** Composition. *)
+    Axiom app_composition :
+      forall {B C D : Type} (f : F A (B -> C)) (h : F A (C -> D)) (b : F A B),
+        fapp h (fapp f b) = fapp (fapp (fapp (pure (@compose B C D)) h) f) b.
+
+    (** Relation to Functor. *)
+    Axiom app_fmap_pure : forall {B C : Type} (f : B -> C),
+        fmap f = fapp (pure f).
+  End Spec.
+End ParamApplicativeSpec.
+
+Module ParamApplicativeFactory (A : ParamApplicativeSpec).
+  Include ParamFunctorFactory A.
+
+  Instance ParamApplicativeInstance (T : Type) : Applicative (A.F T) :=
+    { pure := @A.pure T;
+      fapp := @A.fapp T;
+      app_identity := @A.app_identity T;
+      app_homomorphism := @A.app_homomorphism T;
+      app_composition := @A.app_composition T;
+      app_interchange := @A.app_interchange T;
+      app_fmap_pure := @A.app_fmap_pure T }.
+End ParamApplicativeFactory.
+
+(** Either *)
+Module EitherApplicativeSpec <: ParamFunctorSpec.
+  Include EitherFunctorSpec.
+
+  Section Spec.
+    Context {A : Type}.
+
+    Definition pure {B : Type} : B -> either A B := Right.
+
+    Definition fapp {B C : Type} (f : F A (B -> C)) (b : F A B) : F A C :=
+      match f, b with
+      | Left a, _        => Left a
+      | _, Left a        => Left a
+      | Right f, Right b => Right (f b)
+      end.
+
+    Lemma app_identity : forall {B : Type} (b : F A B),
+        fapp (pure (fun x => x)) b = b.
+    Proof. intros. destruct b; reflexivity. Qed.
+
+    Lemma app_homomorphism : forall {B C : Type} (f : B -> C) (b : B),
+        fapp (pure f) (pure b) = pure (f b).
+    Proof. intros. reflexivity. Qed.
+
+    Lemma app_interchange : forall {B C : Type} (f : F A (B -> C)) (b : B),
+        fapp f (pure b) = fapp (pure (fun h => h b)) f.
+    Proof. intros. destruct f; reflexivity. Qed.
+
+    Lemma app_composition :
+      forall {B C D : Type} (f : F A (B -> C)) (h : F A (C -> D)) (b : F A B),
+        fapp h (fapp f b) = fapp (fapp (fapp (pure (@compose B C D)) h) f) b.
+    Proof. intros. destruct f; destruct h; destruct b; reflexivity. Qed.
+
+    Lemma app_fmap_pure : forall {B C : Type} (f : B -> C),
+        fmap f = fapp (pure f).
+    Proof. intros. reflexivity. Qed.
+  End Spec.
+End EitherApplicativeSpec.
+
+Module EitherApplicativeFactory := ParamApplicativeFactory EitherApplicativeSpec.
+Definition EitherApplicative (A : Type) : Applicative (either A) :=
+  EitherApplicativeFactory.ParamApplicativeInstance A.
+(**[]*)
