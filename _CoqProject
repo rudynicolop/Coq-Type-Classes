@@ -5,3 +5,4 @@ Functor.v
 Applicative.v
 Monad.v
 MonadTrans.v
+Monoid.v
