@@ -6,3 +6,4 @@ Applicative.v
 Monad.v
 MonadTrans.v
 Monoid.v
+Foldable.v
