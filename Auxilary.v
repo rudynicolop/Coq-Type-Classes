@@ -40,3 +40,6 @@ End TypeParam.
 
 (** State. *)
 Definition state (S A : Type) : Type := S -> A * S.
+
+(** Continuations. *)
+Definition cont (R A : Type) : Type := (A -> R) -> R.

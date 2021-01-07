@@ -342,3 +342,29 @@ Module StateFunctorFactory := ParamFunctorFactory StateFunctorSpec.
 Definition StateFunctor (S : Type) : Functor (state S) :=
   StateFunctorFactory.ParamFunctorInstance S.
 (**[]*)
+
+(** Continuations. *)
+Module ContFunctorSpec <: ParamFunctorSpec.
+  Definition F : Type -> Type -> Type := cont.
+
+  Section Spec.
+    Context {R : Type}.
+
+    Definition fmap {A B : Type} (f : A -> B) (c : cont R A) : cont R B :=
+      fun k => c (fun a => k (f a)).
+    (**[]*)
+
+    Lemma fmap_id : forall {A : Type},
+        fmap (fun x : A => x) = (fun x : cont R A => x).
+    Proof. intros. reflexivity. Qed.
+
+    Lemma fmap_compose : forall {A B C : Type} (h : A -> B) (k : B -> C),
+        fmap (k ∘ h) = fmap k ∘ fmap h.
+    Proof. intros. reflexivity. Qed.
+  End Spec.
+End ContFunctorSpec.
+
+Module ContFunctorFactory := ParamFunctorFactory ContFunctorSpec.
+Definition ContFunctor (R : Type) : Functor (cont R) :=
+  ContFunctorFactory.ParamFunctorInstance R.
+(**[]*)

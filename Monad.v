@@ -345,3 +345,37 @@ Module StateMonadFactory := ParamMonadFactory StateMonadSpec.
 Definition StateMonad (S : Type) : Monad (state S) :=
   StateMonadFactory.ParamMonadInstance S.
 (**[]*)
+
+(** Continuations. *)
+Module ContMonadSpec <: ParamMonadSpec.
+  Include ContApplicativeSpec.
+  Definition M : Type -> Type -> Type := cont.
+
+  Section Spec.
+    Context {R : Type}.
+
+    Definition bind {A B : Type}
+               (c : cont R A) (f : A -> cont R B) : cont R B :=
+      fun k => c (fun a => f a k).
+
+    Lemma pure_left : forall {A B : Type} (a : A) (f : A -> cont R B),
+        bind (pure a) f = f a.
+    Proof. intros. reflexivity. Qed.
+
+    (** Binding a Monad with [pure] has no effect. *)
+    Lemma pure_right : forall {A : Type} (m : cont R A),
+        bind m pure = m.
+    Proof. intros. reflexivity. Qed.
+
+    Lemma bind_assoc :
+      forall {A B C : Type} (m : cont R A)
+        (k : A -> cont R B) (h : B -> cont R C),
+        bind m (fun a => bind (k a) h) = bind (bind m k) h.
+    Proof. intros. reflexivity. Qed.
+  End Spec.
+End ContMonadSpec.
+
+Module ContMonadFactory := ParamMonadFactory ContMonadSpec.
+Definition ContMonad (R : Type) : Monad (cont R) :=
+  ContMonadFactory.ParamMonadInstance R.
+(**[]*)

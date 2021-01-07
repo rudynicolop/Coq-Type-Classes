@@ -551,49 +551,7 @@ End ArrowApplicativeSpec.
 Module ArrowApplicativeFactory := ParamApplicativeFactory ArrowApplicativeSpec.
 Definition ArrowApplicative (A : Type) : Applicative (fun B => A -> B) :=
   ArrowApplicativeFactory.ParamApplicativeInstance A.
-
-(** Binary Trees. *)
-Module TreeApplicativeSpec <: ParamApplicativeSpec.
-  Include TreeFunctorSpec.
-
-  Section Spec.
-    Context {K : Type}.
-
-    (** Need a key... *)
-    Definition pure {V : Type} : V -> tree K V := fun _ => Leaf.
-
-    Fixpoint fapp {V R : Type} (f : tree K (V -> R)) (t : tree K V) : tree K R.
-    (* This is really confusing..
-      match f,t with
-      | Leaf, _
-      | _, Leaf                  => Leaf
-      | Node _ f h k, Node k l r =>
-        let l := fapp h
-      end. *)
-    Admitted.
-
-    Lemma app_identity : forall {V : Type} (t : tree K V),
-        fapp (pure (fun x => x)) t = t.
-    Admitted.
-
-    Lemma app_homomorphism : forall {V R : Type} (f : V -> R) (v : V),
-        fapp (pure f) (pure v) = pure (f v).
-    Admitted.
-
-    Lemma app_interchange : forall {V R : Type} (f : tree K (V -> R)) (v : V),
-        fapp f (pure v) = fapp (pure (fun h => h v)) f.
-    Admitted.
-
-    Lemma app_composition :
-      forall {B C D : Type} (f : tree K (B -> C)) (h : tree K (C -> D)) (t : tree K B),
-        fapp h (fapp f t) = fapp (fapp (fapp (pure (@compose B C D)) h) f) t.
-    Admitted.
-
-    Lemma app_fmap_pure : forall {B C : Type} (f : B -> C),
-        fmap f = fapp (pure f).
-    Admitted.
-  End Spec.
-End TreeApplicativeSpec.
+(**[]*)
 
 (** State. *)
 Module StateApplicativeSpec <: ParamApplicativeSpec.
@@ -649,3 +607,47 @@ Module StateApplicativeFactory :=
   ParamApplicativeFactory StateApplicativeSpec.
 Definition StateApplicative (S : Type) : Applicative (state S) :=
   StateApplicativeFactory.ParamApplicativeInstance S.
+(**[]*)
+
+
+(** Continuations. *)
+Module ContApplicativeSpec <: ParamApplicativeSpec.
+  Include ContFunctorSpec.
+
+  Section Spec.
+    Context {R : Type}.
+
+    Definition pure {A : Type} (a : A) : cont R A := fun k => k a.
+
+    Definition fapp {A B : Type}
+               (f : cont R (A -> B)) (c : cont R A) : cont R B :=
+      fun k => c (fun a => f (fun h => k (h a))).
+
+    Lemma app_identity : forall {A : Type} (c : cont R A),
+        fapp (pure (fun x => x)) c = c.
+    Proof. intros. reflexivity. Qed.
+
+    Lemma app_homomorphism : forall {A B : Type} (f : A -> B) (a : A),
+        fapp (pure f) (pure a) = pure (f a).
+    Proof. intros. reflexivity. Qed.
+
+    Lemma app_interchange : forall {A B : Type} (f : cont R (A -> B)) (a : A),
+        fapp f (pure a) = fapp (pure (fun h => h a)) f.
+    Proof. intros. reflexivity. Qed.
+
+    Lemma app_composition :
+      forall {A B C : Type} (f : cont R (A -> B))
+        (h : cont R (B -> C)) (a : cont R A),
+        fapp h (fapp f a) = fapp (fapp (fapp (pure (@compose A B C)) h) f) a.
+    Proof. intros. reflexivity. Qed.
+
+    Lemma app_fmap_pure : forall {A B : Type} (f : A -> B),
+        fmap f = fapp (pure f).
+    Proof. intros. reflexivity. Qed.
+  End Spec.
+End ContApplicativeSpec.
+
+Module ContApplicativeFactory := ParamApplicativeFactory ContApplicativeSpec.
+Definition ContApplicative (R : Type) : Applicative (cont R) :=
+  ContApplicativeFactory.ParamApplicativeInstance R.
+(**[]*)
