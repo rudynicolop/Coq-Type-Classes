@@ -10,6 +10,7 @@ Class Functor (F : Type -> Type) : Type :=
         fmap (fun x : A => x) = (fun x : F A => x);
     fmap_compose : forall {A B C : Type} (f : A -> B) (g : B -> C),
         fmap (g ∘ f) = fmap g ∘ fmap f }.
+(**[]*)
 
 Infix "<$>" := fmap (at level 43, left associativity).
 
@@ -59,7 +60,7 @@ Module IdentityFunctorSpec <: FunctorSpec.
 End IdentityFunctorSpec.
 
 Module IdentityFunctorFactory := FunctorFactory IdentityFunctorSpec.
-Definition IdentityFunctor : Functor id :=
+Instance IdentityFunctor : Functor (fun X => X) :=
   IdentityFunctorFactory.FunctorInstance.
 (**[]*)
 
@@ -92,7 +93,7 @@ Module OptionFunctorSpec <: FunctorSpec.
 End OptionFunctorSpec.
 
 Module OptionFunctorFactory := FunctorFactory OptionFunctorSpec.
-Definition OptionFunctor : Functor option :=
+Instance OptionFunctor : Functor option :=
   OptionFunctorFactory.FunctorInstance.
 (**[]*)
 
@@ -125,7 +126,7 @@ Module ListFunctorSpec <: FunctorSpec.
 End ListFunctorSpec.
 
 Module ListFunctorFactory := FunctorFactory ListFunctorSpec.
-Definition ListFunctor : Functor list :=
+Instance ListFunctor : Functor list :=
   ListFunctorFactory.FunctorInstance.
 (**[]*)
 
@@ -238,7 +239,7 @@ Module EitherFunctorSpec <: ParamFunctorSpec.
 End EitherFunctorSpec.
 
 Module EitherFunctorFactory := ParamFunctorFactory EitherFunctorSpec.
-Definition EitherFunctor (A : Type) : Functor (either A) :=
+Instance EitherFunctor (A : Type) : Functor (either A) :=
   EitherFunctorFactory.ParamFunctorInstance A.
 
 Compute (fun x => x * x) <$> Left 5.
@@ -270,7 +271,7 @@ Module ArrowFunctorSpec <: ParamFunctorSpec.
 End ArrowFunctorSpec.
 
 Module ArrowFunctorFactory := ParamFunctorFactory ArrowFunctorSpec.
-Definition ArrowFunctor (A : Type) : Functor (fun B => A -> B) :=
+Instance ArrowFunctor (A : Type) : Functor (fun B => A -> B) :=
   ArrowFunctorFactory.ParamFunctorInstance A.
 
 (** Binary Trees *)
@@ -306,7 +307,7 @@ Module TreeFunctorSpec <: ParamFunctorSpec.
 End TreeFunctorSpec.
 
 Module TreeFunctorFactory := ParamFunctorFactory TreeFunctorSpec.
-Definition TreeFunctor (K : Type) : Functor (tree K) :=
+Instance TreeFunctor (K : Type) : Functor (tree K) :=
   TreeFunctorFactory.ParamFunctorInstance K.
 (**[]*)
 
@@ -338,7 +339,7 @@ Module StateFunctorSpec <: ParamFunctorSpec.
 End StateFunctorSpec.
 
 Module StateFunctorFactory := ParamFunctorFactory StateFunctorSpec.
-Definition StateFunctor (S : Type) : Functor (state S) :=
+Instance StateFunctor (S : Type) : Functor (state S) :=
   StateFunctorFactory.ParamFunctorInstance S.
 (**[]*)
 
@@ -364,6 +365,6 @@ Module ContFunctorSpec <: ParamFunctorSpec.
 End ContFunctorSpec.
 
 Module ContFunctorFactory := ParamFunctorFactory ContFunctorSpec.
-Definition ContFunctor (R : Type) : Functor (cont R) :=
+Instance ContFunctor (R : Type) : Functor (cont R) :=
   ContFunctorFactory.ParamFunctorInstance R.
 (**[]*)

@@ -11,6 +11,7 @@ Class Monad (M : Type -> Type) `{Applicative M} :=
         bind m pure = m;
     bind_assoc : forall {A B C : Type} (m : M A) (k : A -> M B) (h : B -> M C),
         bind m (fun a => bind (k a) h) = bind (bind m k) h }.
+(**[]*)
 
 (** Haskellites will note the absence of [return : A -> M A].
     [return] has been substituted with [pure] to streamline
@@ -24,6 +25,7 @@ Notation "a <- ma ;; mb" :=
 
 Definition mcompose {A B C : Type} {M : Type -> Type} `{Monad M}
            (f : A -> M B) (h : B -> M C) (a : A) : M C := f a >>= h.
+(**[]*)
 
 Infix ">=>" := mcompose (at level 44, right associativity).
 
@@ -62,6 +64,7 @@ Qed.
 (** The join operator. *)
 Definition join {M : Type -> Type} `{Monad M} {A : Type}
            (m : M (M A)) : M A := m' <- m;; m'.
+(**[]*)
 
 (** * Monad Specification *)
 Module Type MonadSpec <: ApplicativeSpec.
@@ -98,7 +101,7 @@ End MonadFactory.
 (** Identity *)
 Module IdentityMonadSpec <: MonadSpec.
   Include IdentityApplicativeSpec.
-  Definition M : Type -> Type := id.
+  Definition M : Type -> Type := fun X => X.
 
   Definition bind {A B : Type} : A -> (A -> B) -> B := pipeline.
 
@@ -116,7 +119,7 @@ Module IdentityMonadSpec <: MonadSpec.
 End IdentityMonadSpec.
 
 Module IdentityMonadFactory := MonadFactory IdentityMonadSpec.
-Definition IdentityMonad : Monad id :=
+Instance IdentityMonad : Monad (fun X => X) :=
   IdentityMonadFactory.MonadInstance.
 (**[]*)
 
@@ -148,7 +151,7 @@ Module OptionMonadSpec <: MonadSpec.
 End OptionMonadSpec.
 
 Module OptionMonadFactory := MonadFactory OptionMonadSpec.
-Definition OptionMonad : Monad option :=
+Instance OptionMonad : Monad option :=
   OptionMonadFactory.MonadInstance.
 
 Compute Some 5 >>= (fun x => pure (x * x)) >>= (fun y => pure (y + y)).
@@ -191,7 +194,7 @@ Module ListMonadSpec <: MonadSpec.
 End ListMonadSpec.
 
 Module ListMonadFactory := MonadFactory ListMonadSpec.
-Definition ListMonad : Monad list :=
+Instance ListMonad : Monad list :=
   ListMonadFactory.MonadInstance.
 (**[]*)
 
@@ -282,7 +285,7 @@ Module EitherMonadSpec <: ParamMonadSpec.
 End EitherMonadSpec.
 
 Module EitherMonadFactory := ParamMonadFactory EitherMonadSpec.
-Definition EitherMonad (A : Type) : Monad (either A) :=
+Instance EitherMonad (A : Type) : Monad (either A) :=
   EitherMonadFactory.ParamMonadInstance A.
 (**[]*)
 
@@ -314,8 +317,9 @@ Module ArrowMonadSpec <: ParamMonadSpec.
 End ArrowMonadSpec.
 
 Module ArrowMonadFactory := ParamMonadFactory ArrowMonadSpec.
-Definition ArrowMonad (A : Type) : Monad (fun B => A -> B) :=
+Instance ArrowMonad (A : Type) : Monad (fun B => A -> B) :=
   ArrowMonadFactory.ParamMonadInstance A.
+(**[]*)
 
 (** State. *)
 Module StateMonadSpec <: ParamMonadSpec.
@@ -352,7 +356,7 @@ Module StateMonadSpec <: ParamMonadSpec.
 End StateMonadSpec.
 
 Module StateMonadFactory := ParamMonadFactory StateMonadSpec.
-Definition StateMonad (S : Type) : Monad (state S) :=
+Instance StateMonad (S : Type) : Monad (state S) :=
   StateMonadFactory.ParamMonadInstance S.
 (**[]*)
 
@@ -386,6 +390,6 @@ Module ContMonadSpec <: ParamMonadSpec.
 End ContMonadSpec.
 
 Module ContMonadFactory := ParamMonadFactory ContMonadSpec.
-Definition ContMonad (R : Type) : Monad (cont R) :=
+Instance ContMonad (R : Type) : Monad (cont R) :=
   ContMonadFactory.ParamMonadInstance R.
 (**[]*)

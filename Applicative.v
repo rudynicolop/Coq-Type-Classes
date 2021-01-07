@@ -16,6 +16,7 @@ Class Applicative (F : Type -> Type) `{Functor F} :=
         fapp h (fapp f a) = fapp (fapp (fapp (pure (@compose A B C)) h) f) a;
     app_fmap_pure : forall {A B : Type} (f : A -> B),
         fmap f = fapp (pure f) }.
+(**[]*)
 
 Infix "<*>" := fapp (at level 43, left associativity).
 
@@ -105,8 +106,9 @@ Module IdentityApplicativeSpec <: ApplicativeSpec.
 End IdentityApplicativeSpec.
 
 Module IdentityApplicativeFactory := ApplicativeFactory IdentityApplicativeSpec.
-Definition IdentityApplicative : Applicative id :=
+Instance IdentityApplicative : Applicative (fun X => X) :=
   IdentityApplicativeFactory.ApplicativeInstance.
+(**[]*)
 
 (** Option. *)
 Module OptionApplicativeSpec <: ApplicativeSpec.
@@ -147,8 +149,9 @@ Module OptionApplicativeSpec <: ApplicativeSpec.
 End OptionApplicativeSpec.
 
 Module OptionApplicativeFactory := ApplicativeFactory OptionApplicativeSpec.
-Definition OptionApplicative : Applicative option :=
+Instance OptionApplicative : Applicative option :=
   OptionApplicativeFactory.ApplicativeInstance.
+(**[]*)
 
 Compute (fun x y => x + y) <$> Some 3 <*> Some 4.
 Compute (fun x y => (x,y)) <$> Some 42 <*> Some 69.
@@ -225,7 +228,7 @@ Module ListApplicativeSpec <: ApplicativeSpec.
 End ListApplicativeSpec.
 
 Module ListApplicativeFactory := ApplicativeFactory ListApplicativeSpec.
-Definition ListApplicative : Applicative list :=
+Instance ListApplicative : Applicative list :=
   ListApplicativeFactory.ApplicativeInstance.
 (**[]*)
 
@@ -507,7 +510,7 @@ Module EitherApplicativeSpec <: ParamFunctorSpec.
 End EitherApplicativeSpec.
 
 Module EitherApplicativeFactory := ParamApplicativeFactory EitherApplicativeSpec.
-Definition EitherApplicative (A : Type) : Applicative (either A) :=
+Instance EitherApplicative (A : Type) : Applicative (either A) :=
   EitherApplicativeFactory.ParamApplicativeInstance A.
 (**[]*)
 
@@ -549,7 +552,7 @@ Module ArrowApplicativeSpec <: ParamApplicativeSpec.
 End ArrowApplicativeSpec.
 
 Module ArrowApplicativeFactory := ParamApplicativeFactory ArrowApplicativeSpec.
-Definition ArrowApplicative (A : Type) : Applicative (fun B => A -> B) :=
+Instance ArrowApplicative (A : Type) : Applicative (fun B => A -> B) :=
   ArrowApplicativeFactory.ParamApplicativeInstance A.
 (**[]*)
 
@@ -562,7 +565,8 @@ Module StateApplicativeSpec <: ParamApplicativeSpec.
 
     Definition pure {A : Type} (a : A) : state S A := fun st => (a, st).
 
-    Definition fapp {A B : Type} (f : state S (A -> B)) (sa : state S A) : state S B :=
+    Definition fapp {A B : Type}
+               (f : state S (A -> B)) (sa : state S A) : state S B :=
       fun st => let (f, st) := f st in
              let (a, st) := sa st in (f a, st).
 
@@ -605,7 +609,7 @@ End StateApplicativeSpec.
 
 Module StateApplicativeFactory :=
   ParamApplicativeFactory StateApplicativeSpec.
-Definition StateApplicative (S : Type) : Applicative (state S) :=
+Instance StateApplicative (S : Type) : Applicative (state S) :=
   StateApplicativeFactory.ParamApplicativeInstance S.
 (**[]*)
 
@@ -648,6 +652,6 @@ Module ContApplicativeSpec <: ParamApplicativeSpec.
 End ContApplicativeSpec.
 
 Module ContApplicativeFactory := ParamApplicativeFactory ContApplicativeSpec.
-Definition ContApplicative (R : Type) : Applicative (cont R) :=
+Instance ContApplicative (R : Type) : Applicative (cont R) :=
   ContApplicativeFactory.ParamApplicativeInstance R.
 (**[]*)

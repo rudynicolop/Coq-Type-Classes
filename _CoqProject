@@ -7,3 +7,4 @@ Monad.v
 MonadTrans.v
 Monoid.v
 Foldable.v
+Traversable.v

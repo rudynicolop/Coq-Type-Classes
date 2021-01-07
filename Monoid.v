@@ -17,6 +17,7 @@ Class Monoid (A : Type) :=
     (** Appending is associative. *)
     mappend_assoc : forall (x y z : A),
         mappend (mappend x y) z = mappend x (mappend y z) }.
+(**[]*)
 
 (** Monid Specification. *)
 Module Type MonoidSpec.
@@ -40,7 +41,6 @@ End MonoidFactory.
 
 (** Addition of Naturals. *)
 Module AddMonoidSpec <: MonoidSpec.
-
   Definition A : Type := nat.
 
   Definition mempty : nat := 0.
@@ -58,7 +58,7 @@ Module AddMonoidSpec <: MonoidSpec.
 End AddMonoidSpec.
 
 Module AddMonoidFactory := MonoidFactory AddMonoidSpec.
-Definition AddMonoid : Monoid nat :=
+Instance AddMonoid : Monoid nat :=
   AddMonoidFactory.MonoidInstance.
 (**[]*)
 
@@ -82,7 +82,7 @@ Module MulMonoidSpec <: MonoidSpec.
 End MulMonoidSpec.
 
 Module MulMonoidFactory := MonoidFactory MulMonoidSpec.
-Definition MulMonoid : Monoid nat :=
+Instance MulMonoid : Monoid nat :=
   MulMonoidFactory.MonoidInstance.
 (**[]*)
 
@@ -136,7 +136,7 @@ Module ListMonoidSpec <: ParamMonoidSpec.
 End ListMonoidSpec.
 
 Module ListMonoidFactory := ParamMonoidFactory ListMonoidSpec.
-Definition ListMonoid (A : Type) : Monoid (list A) :=
+Instance ListMonoid (A : Type) : Monoid (list A) :=
   ListMonoidFactory.ParamMonoidInstance A.
 
 (** Function Composition. *)
@@ -163,6 +163,6 @@ Module ArrowMonoidSpec <: ParamMonoidSpec.
 End ArrowMonoidSpec.
 
 Module ArrowMonoidFactory := ParamMonoidFactory ArrowMonoidSpec.
-Definition ArrowMonoid (A : Type) : Monoid (A -> A) :=
+Instance ArrowMonoid (A : Type) : Monoid (A -> A) :=
   ArrowMonoidFactory.ParamMonoidInstance A.
 (**[]*)
