@@ -1,3 +1,5 @@
+Require Export Coq.Logic.FunctionalExtensionality.
+
 (** * Auxilary Definitions *)
 
 (** Function compition combinators. *)
@@ -9,6 +11,22 @@ Definition compose {A B C : Type} (g : B -> C) (f : A -> B) : A -> C := fun a =>
 Infix "▷" := pipeline (at level 45, left associativity).
 
 Infix "∘" := compose (at level 40, left associativity).
+
+Definition uncurry {A B C : Type} (f : A -> B -> C) : A * B -> C :=
+  fun '(a,b) => f a b.
+(**[]*)
+
+Definition curry {A B C : Type} (f : A * B -> C) : A -> B -> C :=
+  fun a b => f (a, b).
+(**[]*)
+
+Fact curry_uncurry : forall {A B C : Type} (f : A -> B -> C),
+    curry (uncurry f) = f.
+Proof. intros. reflexivity. Qed.
+
+Fact uncurry_curry : forall {A B C : Type} (f : A * B -> C),
+    uncurry (curry f) = f.
+Proof. intros. extensionality ab. destruct ab; reflexivity. Qed.
 
 Lemma f_2_arg :
   forall {A B C : Type}

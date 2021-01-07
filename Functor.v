@@ -1,4 +1,3 @@
-Require Export Coq.Logic.FunctionalExtensionality.
 Require Coq.Lists.List.
 Require Export TypeClassLib.Auxilary.
 
