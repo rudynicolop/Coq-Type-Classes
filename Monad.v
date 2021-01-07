@@ -59,6 +59,10 @@ Proof.
   reflexivity.
 Qed.
 
+(** The join operator. *)
+Definition join {M : Type -> Type} `{Monad M} {A : Type}
+           (m : M (M A)) : M A := m' <- m;; m'.
+
 (** * Monad Specification *)
 Module Type MonadSpec <: ApplicativeSpec.
   Include ApplicativeSpec.
@@ -199,6 +203,12 @@ Module ListPlayground.
     a <- la;; b <- lb;; pure (a,b).
 
   Compute list_pairs [1;2;3;4;5;6] [None; Some 69; None; None; Some 42].
+
+  Compute join [[1;2;3;4;5];[23;76;11];[];[69;42]].
+
+  Remark join_concat : forall {A : Type} (l : list (list A)),
+      join l = concat l.
+  Proof. intros. induction l; auto. Qed.
 End ListPlayground.
 
 (** * Parameterized Monads *)
