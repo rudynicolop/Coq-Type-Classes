@@ -143,39 +143,6 @@ Module ListPlayground.
           [None; Some 1; Some 2; None; None; None; Some 3; Some 4; Some 5; None]).
 End ListPlayground.
 
-(** Functor Composition *)
-Module FunctorCompose (M Q : FunctorSpec) <: FunctorSpec.
-  Definition F : Type -> Type := fun T => Q.F (M.F T).
-
-  Definition fmap {A B : Type} (f : A -> B) : F A -> F B := Q.fmap (M.fmap f).
-
-  Lemma fmap_id : forall {A : Type},
-      fmap (fun a : A => a) = (fun x : F A => x).
-  Proof.
-    intros. unfold fmap.
-    rewrite M.fmap_id. apply Q.fmap_id.
-  Qed.
-
-  Lemma fmap_compose : forall {A B C : Type} (f : A -> B) (h : B -> C),
-      fmap (h ∘ f) = fmap h ∘ fmap f.
-  Proof.
-    intros. unfold fmap.
-    rewrite M.fmap_compose. apply Q.fmap_compose.
-  Qed.
-End FunctorCompose.
-
-Module ComposePlayground.
-  Module FOL' := FunctorCompose OptionFunctorSpec ListFunctorSpec.
-  Module FOL  := FunctorFactory FOL'.
-  Instance OptionListFunctor : Functor (list ∘ option) := FOL.FunctorInstance.
-
-  Import Coq.Lists.List.
-  Import ListNotations.
-
-  Compute (fun x => x * x) <$>
-          [None; Some 1; Some 2; None; None; None; Some 3; Some 4; Some 5; None].
-End ComposePlayground.
-
 (** * Parameterized Functors *)
 
 (* Class ParamFunctor
@@ -368,3 +335,78 @@ Module ContFunctorFactory := ParamFunctorFactory ContFunctorSpec.
 Instance ContFunctor (R : Type) : Functor (cont R) :=
   ContFunctorFactory.ParamFunctorInstance R.
 (**[]*)
+
+(** * Functor Composition *)
+
+Section FunctorComposition.
+  Context {Q R : Type -> Type}.
+
+  Context `{HQ : Functor Q}.
+
+  Context `{HR : Functor R}.
+
+  Definition fmapc {A B : Type} (f : A -> B) : (R ∘ Q) A -> (R ∘ Q) B :=
+    @fmap R HR _ _ (@fmap Q HQ _ _ f).
+
+  Lemma fmap_idc : forall {A : Type},
+      fmapc (fun a : A => a) = (fun x : (R ∘ Q) A => x).
+  Proof.
+    intros. unfold fmapc.
+    repeat rewrite fmap_id. reflexivity.
+  Qed.
+
+  Lemma fmap_composec : forall {A B C : Type} (f : A -> B) (h : B -> C),
+      fmapc (h ∘ f) = fmapc h ∘ fmapc f.
+  Proof.
+    intros. unfold fmapc.
+    repeat rewrite fmap_compose. reflexivity.
+  Qed.
+End FunctorComposition.
+
+Instance ComposeFunctor (Q R : Type -> Type)
+  `{Functor Q} `{Functor R} : Functor (R ∘ Q) :=
+  { fmap := @fmapc Q R _ _;
+    fmap_id := @fmap_idc Q R _ _;
+    fmap_compose := @fmap_composec Q R _ _}.
+  (**[]*)
+
+(** Users have the option to use
+    the (albeit more cumbersome)
+    parameterized module if so desired. *)
+Module FunctorComposeSpec (M Q : FunctorSpec) <: FunctorSpec.
+  Definition F : Type -> Type := fun T => Q.F (M.F T).
+
+  Definition fmap {A B : Type} (f : A -> B) : F A -> F B := Q.fmap (M.fmap f).
+
+  Lemma fmap_id : forall {A : Type},
+      fmap (fun a : A => a) = (fun x : F A => x).
+  Proof.
+    intros. unfold fmap.
+    rewrite M.fmap_id. apply Q.fmap_id.
+  Qed.
+
+  Lemma fmap_compose : forall {A B C : Type} (f : A -> B) (h : B -> C),
+      fmap (h ∘ f) = fmap h ∘ fmap f.
+  Proof.
+    intros. unfold fmap.
+    rewrite M.fmap_compose. apply Q.fmap_compose.
+  Qed.
+End FunctorComposeSpec.
+
+Module FunctorComposeFactory (QM RM : FunctorSpec).
+  Module FCS := FunctorComposeSpec QM RM.
+  Include FunctorFactory FCS.
+End FunctorComposeFactory.
+
+Module ComposePlayground.
+  (* Module FOL' := FunctorComposeSpec OptionFunctorSpec ListFunctorSpec.
+  Module FOL  := FunctorFactory FOL'. *)
+  Instance OptionListFunctor : Functor (list ∘ option) :=
+    ComposeFunctor option list.
+
+  Import Coq.Lists.List.
+  Import ListNotations.
+
+  Compute (fun x => x * x) <$>
+          [None; Some 1; Some 2; None; None; None; Some 3; Some 4; Some 5; None].
+End ComposePlayground.

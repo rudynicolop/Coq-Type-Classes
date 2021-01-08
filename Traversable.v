@@ -10,10 +10,11 @@ Class Traversable (T : Type -> Type) `{Functor T} `{Foldable T} :=
     traverse_id : forall {A : Type},
         @traverse (fun X : Type => X) IdentityFunctor _ _ _
                   (fun a : A => a) = fun t : T A => t;
-    (*traverse_compose :
-      forall {F : Type -> Type} `{Applicative F}
-        {A B C : Type} (f : A -> F B) (h : B -> F C),
-        traverse (fmap h ∘ f) = fmap (traverse h) ∘ (traverse f) *)
+    (* traverse_compose :
+      forall {Q R : Type -> Type} `{Applicative Q} {Applicative R}
+        {A B C : Type} (f : A -> Q B) (h : B -> R C),
+        traverse (fmap h ∘ f) =
+        fmap (@traverse R _ _ _ _ h) ∘ (@traverse Q _ _ _ _ f) *)
     }.
 (**[]*)
 

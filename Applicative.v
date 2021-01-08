@@ -243,7 +243,7 @@ Module ListPlayground.
   Compute mult <$> [2;3;4;5] <*> pure 4.
 
   (* Composing Applicatives is tricky. *)
-
+(*
   Fixpoint list_option_map {A B : Type} (fs : list (option (A -> B)))
            (a : list (option A)) : list (option B) :=
     match fs with
@@ -328,12 +328,13 @@ Module ListPlayground.
 
   Definition list_option_map'''''' {A B : Type} (fs : list (option (A -> B)))
              (a : list (option A)) : list (option B) := fapp <$> fs <*> a.
+*)
 End ListPlayground.
 
 (** Applicative Composition *)
 Module ApplicativeCompose (Q R : ApplicativeSpec) <: ApplicativeSpec.
   (** Composing the Functors. *)
-  Module QR := FunctorCompose Q R.
+  Module QR := FunctorComposeSpec Q R.
   Include QR.
 
   Definition pure {A : Type} : A -> F A := R.pure ∘ Q.pure.
