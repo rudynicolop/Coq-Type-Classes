@@ -534,7 +534,67 @@ Section ApplicativeComposition.
     extensionality q. rewrite app_interchange.
     rewrite app_fmap_pure. reflexivity.
   Qed.
+
+  Lemma app_compositionc :
+    forall {A B C : Type}
+      (f : (R ∘ Q) (A -> B)) (h : (R ∘ Q) (B -> C)) (a : (R ∘ Q) A),
+      fappc h (fappc f a) = fappc (fappc (fappc (purec (@compose A B C)) h) f) a.
+  Proof.
+    intros. unfold fappc, purec.
+    repeat rewrite app_fmap_pure.
+    repeat rewrite app_composition with
+        (h0 := @pure R _ _ _ (@fapp Q _ _ _ _)).
+    repeat rewrite app_homomorphism.
+    rewrite app_composition with
+        (@fapp R _ _ _ _ (@pure R _ _ _ (@fapp Q _ _ _ _)) f)
+        (@fapp R _ _ _ _ (@pure R _ _ _ (@fapp Q _ _ _ _)) h) a.
+    apply f_2_arg. (* rewrite app_homomorphism. *)
+    repeat rewrite <- app_fmap_pure.
+    pose proof @fmap_compose R _ as H. unfold compose in H.
+    pose proof H _ _ _ (@fapp Q _ _ _ _)
+         (@compose (Q A) (Q B) (Q C)) as H'.
+    apply equal_f with h in H'. rewrite <- H'; clear H'.
+    epose proof H _ _ _ (@fapp Q _ _ _ _) (compose (@fapp Q _ _ _ _)) as H'.
+    apply equal_f with
+        (((@pure R _ _ _) ∘ (@pure Q _ _ _)) (@compose A B C)) in H'.
+    rewrite <- H'; clear H'. repeat rewrite app_fmap_pure.
+    repeat rewrite app_composition. apply f_2_arg.
+    repeat rewrite app_homomorphism.
+    repeat rewrite app_interchange.
+    unfold compose. repeat rewrite app_homomorphism.
+    repeat rewrite <- app_fmap_pure.
+    pose proof H _ _ _
+         (fun (a0 : Q (B -> C))
+            (f0 : Q (A -> B) -> Q A -> Q B)
+            (a1 : Q (A -> B)) (a2 : Q A)
+          => @fapp Q _ _ _ _ a0 (f0 a1 a2))
+         (fun h0 : (Q (A -> B) -> Q A -> Q B) ->
+                 Q (A -> B) -> Q A -> Q C => h0 (@fapp Q _ _ _ _)) as H'.
+    apply equal_f with h in H'. rewrite <- H'; clear H'. apply f_2_arg.
+    extensionality q. extensionality r. extensionality s.
+    repeat rewrite app_composition. unfold compose.
+    rewrite <- app_fmap_pure. reflexivity.
+  Qed.
+
+  Lemma app_fmap_purec : forall {A B : Type} (f : A -> B),
+      fmapc f = fappc (purec f).
+  Proof.
+    intros. unfold fappc, fmapc, purec. unfold compose.
+    repeat rewrite app_fmap_pure. apply f_equal.
+    rewrite app_homomorphism. reflexivity.
+  Qed.
 End ApplicativeComposition.
+
+Instance ComposeApplicative (Q R : Type -> Type)
+         `{Applicative Q} `{Applicative R} : Applicative (R ∘ Q) :=
+  { pure := @purec Q R _ _ _ _;
+    fapp := @fappc Q R _ _ _ _;
+    app_identity := @app_identityc Q R _ _ _ _;
+    app_homomorphism := @app_homomorphismc Q R _ _ _ _;
+    app_interchange := @app_interchangec Q R _ _ _ _;
+    app_composition := @app_compositionc Q R _ _ _ _;
+    app_fmap_pure := @app_fmap_purec Q R _ _ _ _ }.
+(**[]*)
 
 Module ApplicativeCompose (Q R : ApplicativeSpec) <: ApplicativeSpec.
   (** Composing the Functors. *)
