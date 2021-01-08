@@ -2,8 +2,9 @@ Require Coq.Lists.List.
 Require Export TypeClassLib.Applicative.
 
 (** * The Monad Type Class *)
-Class Monad (M : Type -> Type) `{Applicative M} :=
-  { bind : forall {A B : Type}, M A -> (A -> M B) -> M B;
+Class Monad (M : Type -> Type) :=
+  { Monad_Applicative :> Applicative M;
+    bind : forall {A B : Type}, M A -> (A -> M B) -> M B;
     (** Laws. *)
     pure_left : forall {A B : Type} (a : A) (f : A -> M B),
         bind (pure a) f = f a;
