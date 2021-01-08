@@ -61,3 +61,13 @@ Definition state (S A : Type) : Type := S -> A * S.
 
 (** Continuations. *)
 Definition cont (R A : Type) : Type := (A -> R) -> R.
+
+(** Ternary Trees (just for fun) *)
+Inductive ternary (A : Type) : Type :=
+| LF
+| N2 (a : A) (l r : ternary A)
+| N3 (x y : A) (l m r : ternary A).
+
+Arguments LF {A}.
+Arguments N2 {A}.
+Arguments N3 {A}.

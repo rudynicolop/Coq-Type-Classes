@@ -57,7 +57,31 @@ Fixpoint foldl_tree {A K V : Type}
 (**[]*)
 
 (** Note that this instance ignores keys. *)
-Instance TreeFoldable {K : Type} : Foldable (tree K) :=
+Instance TreeFoldable (K : Type) : Foldable (tree K) :=
   { foldr A V f := @foldr_tree A K V (fun _ => f);
     foldl A V f := @foldl_tree A K V (fun a _ => f a) }.
+(**[]*)
+
+(** Ternary Trees. *)
+
+Fixpoint foldr_ternary {A B : Type}
+         (f : B -> A -> A) (a : A) (t : ternary B) : A :=
+  match t with
+  | LF           => a
+  | N2 b l r     => foldr_ternary f (f b (foldr_ternary f a r)) r
+  | N3 x y l m r => foldr_ternary f (f x (foldr_ternary f (f y (foldr_ternary f a r)) m)) l
+  end.
+(**[]*)
+
+Fixpoint foldl_ternary {A B : Type}
+         (f : A -> B -> A) (a : A) (t : ternary B) : A :=
+  match t with
+  | LF           => a
+  | N2 b l r     => foldl_ternary f (f (foldl_ternary f a l) b) r
+  | N3 x y l m r => foldl_ternary f (f (foldl_ternary f (f (foldl_ternary f a l) x) m) y) r
+  end.
+(**[]*)
+
+Instance TernaryFoldable : Foldable ternary :=
+  { foldr := @foldr_ternary; foldl := @foldl_ternary }.
 (**[]*)

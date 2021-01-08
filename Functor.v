@@ -143,10 +143,43 @@ Module ListPlayground.
           [None; Some 1; Some 2; None; None; None; Some 3; Some 4; Some 5; None]).
 End ListPlayground.
 
-(** * Parameterized Functors *)
+(** Ternary Trees. *)
+Module TernaryFunctorSpec <: FunctorSpec.
+  Definition F : Type -> Type := ternary.
 
-(* Class ParamFunctor
-   (F : Type -> Type -> Type) (A : Type) `{Functor (F A)}. *)
+  Fixpoint fmap {A B : Type} (f : (A -> B)) (t : ternary A) : ternary B :=
+    match t with
+    | LF           => LF
+    | N2 a l r     => N2 (f a) (fmap f l) (fmap f r)
+    | N3 x y l m r => N3 (f x) (f y) (fmap f l) (fmap f m) (fmap f r)
+    end.
+  (**[]*)
+
+  Lemma fmap_id : forall {A : Type},
+      fmap (fun x : A => x) = (fun x : ternary A => x).
+  Proof.
+    intros. extensionality t.
+    induction t as [| a l IHl r IHr | x y l IHl m IHm r IHr]; simpl; auto.
+    - rewrite IHl, IHr. reflexivity.
+    - rewrite IHl, IHm, IHr. reflexivity.
+  Qed.
+
+  Lemma fmap_compose : forall {A B C : Type} (f : A -> B) (g : B -> C),
+      fmap (g ∘ f) = fmap g ∘ fmap f.
+  Proof.
+    intros. extensionality t.
+    induction t as [| a l IHl r IHr | x y l IHl m IHm r IHr]; simpl; auto.
+    - rewrite IHl, IHr. reflexivity.
+    - rewrite IHl, IHm, IHr. reflexivity.
+  Qed.
+End TernaryFunctorSpec.
+
+Module TernaryFunctorFactory := FunctorFactory TernaryFunctorSpec.
+Instance TernaryFunctor : Functor ternary :=
+  TernaryFunctorFactory.FunctorInstance.
+(**[]*)
+
+(** * Parameterized Functors *)
 
 Module Type ParamFunctorSpec.
   (** The Functor's kind. *)
