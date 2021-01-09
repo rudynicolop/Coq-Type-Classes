@@ -50,12 +50,6 @@ Inductive tree (K V : Type) :=
 Arguments Leaf {K} {V}.
 Arguments Node {K} {V}.
 
-(** Because Coq disallows
-    Modules parameterized by types... *)
-Module Type TypeParam.
-  Parameter T : Type.
-End TypeParam.
-
 (** State. *)
 Definition state (S A : Type) : Type := S -> A * S.
 
