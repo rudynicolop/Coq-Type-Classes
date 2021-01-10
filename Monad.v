@@ -32,40 +32,45 @@ Infix ">=>" := mcompose (at level 44, right associativity).
 
 (** The Monad Laws (more elegeantly)
     in terms of Composition. *)
+Section MonadLaws.
+  Context {M : Type -> Type}.
 
-(** Left [pure] is idempotent. *)
-Lemma left_pure_idem :
-  forall {A B : Type} {M : Type -> Type} `{HM : Monad M} (f : A -> M B),
-    pure >=> f = f.
-Proof.
-  intros. unfold mcompose.
-  extensionality a. apply pure_left.
-Qed.
+  Context `{HM : Monad M}.
 
-(** Right [pure] is idempotent. *)
-Lemma right_pure_idem :
-  forall {A B : Type} {M : Type -> Type} `{HM : Monad M} (f : A -> M B),
-    f >=> pure = f.
-Proof.
-  intros. unfold mcompose.
-  extensionality a. apply pure_right.
-Qed.
+  (** Left [pure] is idempotent. *)
+  Lemma left_pure_idem :
+    forall {A B : Type} (f : A -> M B),
+      pure >=> f = f.
+  Proof.
+    intros. unfold mcompose.
+    extensionality a. apply pure_left.
+  Qed.
 
-(** Composition is associative. *)
-Lemma mcompose_assoc :
-  forall {A B C D : Type} {M : Type -> Type} `{HM : Monad M}
+  (** Right [pure] is idempotent. *)
+  Lemma right_pure_idem :
+    forall {A B : Type} (f : A -> M B),
+      f >=> pure = f.
+  Proof.
+    intros. unfold mcompose.
+    extensionality a. apply pure_right.
+  Qed.
+
+  (** Composition is associative. *)
+  Lemma mcompose_assoc :
+  forall {A B C D : Type}
     (f : A -> M B) (h : B -> M C) (k : C -> M D),
     (f >=> h) >=> k = f >=> h >=> k.
-Proof.
-  intros. unfold mcompose.
-  extensionality a. rewrite bind_assoc.
-  reflexivity.
-Qed.
+  Proof.
+    intros. unfold mcompose.
+    extensionality a. rewrite bind_assoc.
+    reflexivity.
+  Qed.
 
-(** The join operator. *)
-Definition join {M : Type -> Type} `{Monad M} {A : Type}
-           (m : M (M A)) : M A := m' <- m;; m'.
-(**[]*)
+  (** The join operator. *)
+  Definition join {A : Type}
+             (m : M (M A)) : M A := m' <- m;; m'.
+  (**[]*)
+End MonadLaws.
 
 (** * Monad Specification *)
 Module Type MonadSpec <: ApplicativeSpec.

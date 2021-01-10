@@ -177,5 +177,6 @@ Module OptionMonadTransSpec <: MonadTransSpec.
       @bind (M ∘ option) (TMonad M) _ _ (lift m) (lift ∘ f).
   Proof.
     intros. unfold compose. simpl. unfold lift.
+    unfold bindt. Unset Printing Notations. cbn.
   Admitted.
 End OptionMonadTransSpec.
