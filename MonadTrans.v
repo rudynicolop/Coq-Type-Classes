@@ -53,69 +53,7 @@ End MonadTransFactory.
 Module IdentityMonadTransSpec <: MonadTransSpec.
   Definition T : (Type -> Type) -> Type -> Type := fun M => M.
 
-  Section TMonadSpec.
-    Context {M : Type -> Type}.
-
-    Context `{HM : Monad M}.
-
-    Definition fmapt {A B : Type} : (A -> B) -> M A -> M B := fmap.
-
-    Lemma fmap_idt : forall {A : Type},
-        fmapt (fun x : A => x) = (fun x : M A => x).
-    Proof. intros. unfold fmapt. apply fmap_id. Qed.
-
-    Lemma fmap_composet : forall {A B C : Type} (f : A -> B) (g : B -> C),
-        fmapt (g ∘ f) = fmapt g ∘ fmapt f.
-    Proof. intros. unfold fmapt. apply fmap_compose. Qed.
-
-    Definition puret {A : Type} : A -> M A := pure.
-
-    Definition fappt {A B : Type} : M (A -> B) -> M A -> M B := fapp.
-
-    Lemma app_identityt : forall {A : Type} (a : M A),
-        fappt (puret (fun x => x)) a = a.
-    Proof. intros. unfold fappt, puret. apply app_identity. Qed.
-
-    Lemma app_homomorphismt : forall {A B : Type} (f : A -> B) (a : A),
-        fappt (puret f) (puret a) = puret (f a).
-    Proof. intros. unfold fappt, puret. apply app_homomorphism. Qed.
-
-    Lemma app_interchanget : forall {A B : Type} (f : M (A -> B)) (a : A),
-        fappt f (puret a) = fappt (puret (fun h => h a)) f.
-    Proof. intros. unfold fappt, puret. apply app_interchange. Qed.
-
-    Lemma app_compositiont :
-      forall {A B C : Type} (f : M (A -> B)) (h : M (B -> C)) (a : M A),
-        fappt h (fappt f a) =
-        fappt (fappt (fappt (puret (@compose A B C)) h) f) a.
-    Proof. intros. unfold fappt, puret. apply app_composition. Qed.
-
-    Lemma app_fmap_puret : forall {A B : Type} (f : A -> B),
-        fmapt f = fappt (puret f).
-    Proof. intros. unfold fmapt, puret. apply app_fmap_pure. Qed.
-
-    Definition bindt {A B : Type} : M A -> (A -> M B) -> M B := bind.
-
-    Lemma pure_leftt : forall {A B : Type} (a : A) (f : A -> M B),
-        bindt (puret a) f = f a.
-    Proof. unfold bindt, puret. intros. apply pure_left. Qed.
-
-    Lemma pure_rightt : forall {A : Type} (m : M A),
-        bindt m puret = m.
-    Proof. intros. unfold bindt, puret. apply pure_right. Qed.
-
-    Lemma bind_assoct :
-      forall {A B C : Type} (m : M A) (k : A -> M B) (h : B -> M C),
-        bindt m (fun a => bindt (k a) h) = bindt (bindt m k) h.
-    Proof. intros. unfold bindt. apply bind_assoc. Qed.
-  End TMonadSpec.
-
-  Instance TMonad (M : Type -> Type) `{Monad M} : Monad M :=
-    { bind := @bindt M _;
-      pure_left := @pure_left M _;
-      pure_right := @pure_right M _;
-      bind_assoc := @bind_assoct M _}.
-  (**[]*)
+  Instance TMonad (M : Type -> Type) `{HM : Monad M} : Monad M := HM.
 
   Definition lift {M : Type -> Type} `{Monad M}
              {A : Type} : M A -> M A := fun m => m.
@@ -136,3 +74,108 @@ Module IdentityMonadTransFactory :=
   MonadTransFactory IdentityMonadTransSpec.
 Instance IdentityMonadTrans : MonadTrans (fun M : Type -> Type => M) :=
   IdentityMonadTransFactory.MonadTransInstance.
+(**[]*)
+
+(** Option. *)
+Module OptionMonadTransSpec <: MonadTransSpec.
+  Definition T (M : Type -> Type) : Type -> Type := M ∘ option.
+
+  Instance TApplicative (M : Type -> Type)
+           `{HM : Monad M} : Applicative (M ∘ option) :=
+    ComposeApplicative option M.
+  (**[]*)
+
+  Section TMonadSpec.
+    Context {M : Type -> Type}.
+
+    Context `{HM : Monad M}.
+
+    Definition bindt {A B : Type}
+               (m : M (option A)) (f : A -> M (option B)) : M (option B) :=
+      o <- m ;;
+      match o with
+      | None   => pure None
+      | Some a => (f a)
+      end.
+    (**[]*)
+
+    Lemma pure_leftt : forall {A B : Type} (a : A) (f : A -> M (option B)),
+        bindt (@pure (M ∘ option) _ A a) f = f a.
+    Proof.
+      intros. pose proof @pure_left M HM (option A) (option B) as H.
+      unfold bindt. simpl. unfold purec. unfold compose.
+      rewrite H. simpl. reflexivity.
+    Qed.
+
+    Lemma pure_rightt : forall {A : Type} (m : M (option A)),
+      bindt m (@pure (M ∘ option) _ A) = m.
+    Proof.
+      intros. unfold bindt. simpl. unfold purec.
+      unfold compose.
+      assert (H : (fun o : option A =>
+                     match o with
+                     | Some a => @pure M _ _ (@pure option _ _ a)
+                     | None => @pure M _ _ None
+                     end) = (fun o : option A =>
+                               @pure M _ _
+                                     (match o with
+                                      | Some a => @pure option _ _ a
+                                      | None => None
+                                      end))).
+      { extensionality o; destruct o; auto. }
+      rewrite H; clear H.
+      assert (H : (fun o : option A =>
+                     @pure M _ _
+                           match o with
+                           | Some a => pure a
+                           | None => None
+                           end) =
+                  (fun o : option A => @pure M _ _ o)).
+      { extensionality o; destruct o; auto. }
+      rewrite H. apply pure_right.
+    Qed.
+
+    Lemma bind_assoct :
+      forall {A B C : Type} (m : M (option A))
+        (k : A -> M (option B)) (h : B -> M (option C)),
+        bindt m (fun a => bindt (k a) h) = bindt (bindt m k) h.
+    Proof.
+      intros. unfold bindt.
+      rewrite <- (@bind_assoc M). apply f_equal.
+      extensionality o. destruct o as [a |]; auto.
+      Search pure. rewrite pure_left. reflexivity.
+    Qed.
+  End TMonadSpec.
+
+  Instance TMonad : forall (M : Type -> Type) `{Monad M}, Monad (M ∘ option) :=
+    { bind := @bindt M _;
+      pure_left := @pure_leftt M _;
+      pure_right := @pure_rightt M _;
+      bind_assoc := @bind_assoct M _; }.
+  (**[]*)
+
+  Definition lift {M : Type -> Type} `{Monad M}
+             {A : Type} (m : M A) : M (option A) :=
+    @fmap M _ _ _ (@pure option _ _) m.
+  (**[]*)
+
+  Lemma lift_pure : forall {M : Type -> Type} `{Monad M} {A : Type},
+      @lift M _ A ∘ (@pure M _ A) =
+      @pure (M ∘ option) (@Monad_Applicative (M ∘ option) (TMonad M)) A.
+  Proof.
+    intros. extensionality a. unfold compose, lift.
+    cbn. unfold purec. unfold compose, OptionMonadSpec.pure.
+    simpl. unfold OptionMonadSpec.pure.
+    Search fmap. rewrite app_fmap_pure.
+    apply app_homomorphism.
+  Qed.
+  (**[]*)
+
+  Lemma lift_bind : forall {M : Type -> Type} `{Monad M}
+                      {A B : Type} (m : M A) (f : A -> M B),
+      lift (bind m f) =
+      @bind (M ∘ option) (TMonad M) _ _ (lift m) (lift ∘ f).
+  Proof.
+    intros. unfold compose. simpl. unfold lift.
+  Admitted.
+End OptionMonadTransSpec.
