@@ -15,7 +15,7 @@ Class MonadTrans
     (** Lift composes with bind. *)
     lift_bind : forall {M : Type -> Type} `{Monad M}
                   {A B : Type} (m : M A) (f : A -> M B),
-        lift (bind m f) = bind (lift m) (lift ∘ f); }.
+        lift (m >>= f) = lift m >>= lift ∘ f; }.
 (**[]*)
 
 (** Specification. *)
@@ -35,7 +35,7 @@ Module Type MonadTransSpec.
 
   Axiom lift_bind : forall {M : Type -> Type} `{Monad M}
                           {A B : Type} (m : M A) (f : A -> M B),
-      lift (bind m f) = @bind (T M) (TMonad M) _ _ (lift m) (lift ∘ f).
+      lift (m >>= f) = @bind (T M) (TMonad M) _ _ (lift m) (lift ∘ f).
   (**[]*)
 End MonadTransSpec.
 
@@ -66,7 +66,7 @@ Module IdentityMonadTransSpec <: MonadTransSpec.
 
   Lemma lift_bind : forall {M : Type -> Type} `{Monad M}
                       {A B : Type} (m : M A) (f : A -> M B),
-      lift (bind m f) = @bind M (TMonad M) _ _ (lift m) (lift ∘ f).
+      lift (m >>= f) = lift m >>= lift ∘ f.
   Proof. intros. reflexivity. Qed.
 End IdentityMonadTransSpec.
 
@@ -173,7 +173,7 @@ Module OptionMonadTransSpec <: MonadTransSpec.
 
   Lemma lift_bind : forall {M : Type -> Type} `{Monad M}
                       {A B : Type} (m : M A) (f : A -> M B),
-      lift (bind m f) =
+      lift (m >>= f) =
       @bind (M ∘ option) (TMonad M) _ _ (lift m) (lift ∘ f).
   Proof.
     intros. unfold compose. simpl. unfold lift.
