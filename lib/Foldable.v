@@ -1,5 +1,5 @@
 Require Import Coq.Lists.List.
-Require Export TypeClassLib.Monoid.
+Require Export TypeClasses.Monoid.
 
 (** * The Foldable Class *)
 

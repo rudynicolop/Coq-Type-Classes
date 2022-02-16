@@ -1,5 +1,5 @@
 Require Coq.Lists.List.
-Require Export TypeClassLib.Functor.
+Require Export TypeClasses.Functor.
 
 (** * Applicative Functor Type Class *)
 Class Applicative (F : Type -> Type) :=
@@ -207,10 +207,9 @@ Module ListApplicativeSpec <: ApplicativeSpec.
         repeat rewrite concat_map_empty in *; cbn in *;
           repeat rewrite app_nil_r in *; auto;
             try apply concat_map_empty. apply f_equal.
-    Search (map _ (_ ++ _)). repeat rewrite map_app in *.
-    Search (map _ (map _ _)). rewrite map_map in *.
+    repeat rewrite map_app in *. rewrite map_map in *.
     rewrite <- app_assoc in *. apply f_equal.
-    Search (map _ (concat _)). repeat rewrite concat_map in *.
+    repeat rewrite concat_map in *.
     repeat rewrite map_map in *. cbn in *. rewrite concat_app in *.
     assert (HRewrite :
               (fun x : A -> B => h (x a) :: map h (map x ta)) =
@@ -533,7 +532,7 @@ Section ApplicativeComposition.
     repeat rewrite <- app_fmap_pure.
     pose proof @fmap_compose R _ as H. unfold compose in H.
     pose proof H _ _ _ fapp (fun h : Q A -> Q B => h (pure a)) as H'.
-    Check equal_f. apply equal_f with f in H'.
+    apply equal_f with f in H'.
     rewrite <- H'; clear H' H. apply f_2_arg.
     extensionality q. rewrite app_interchange.
     rewrite app_fmap_pure. reflexivity.
@@ -614,10 +613,10 @@ Module ApplicativeCompose (Q R : ApplicativeSpec) <: ApplicativeSpec.
   Proof.
     intros. unfold fapp, pure.
     rewrite R.app_fmap_pure. unfold compose.
-    Search (R.fapp (R.pure _)). rewrite R.app_homomorphism.
-    Search (R.fapp (R.pure _)). rewrite <- R.app_fmap_pure.
+    rewrite R.app_homomorphism.
+    rewrite <- R.app_fmap_pure.
     rewrite <- Q.app_fmap_pure.
-    Search Q.fmap. rewrite Q.fmap_id.
+    rewrite Q.fmap_id.
     rewrite R.fmap_id. reflexivity.
   Qed.
 
@@ -636,11 +635,11 @@ Module ApplicativeCompose (Q R : ApplicativeSpec) <: ApplicativeSpec.
     intros. unfold fapp, pure. unfold compose.
     repeat rewrite R.app_fmap_pure.
     repeat rewrite R.app_homomorphism.
-    rewrite R.app_interchange. Search (R.fapp (R.pure _)).
-    repeat rewrite <- R.app_fmap_pure. Search R.fmap.
+    rewrite R.app_interchange.
+    repeat rewrite <- R.app_fmap_pure.
     pose proof @R.fmap_compose as H. unfold compose in H.
     pose proof H _ _ _ Q.fapp (fun h : Q.F A -> Q.F B => h (Q.pure a)) as H'.
-    Check equal_f. apply equal_f with f in H'.
+    apply equal_f with f in H'.
     rewrite <- H'; clear H' H. apply f_2_arg.
     extensionality q. apply Q.app_interchange.
   Qed.
@@ -684,7 +683,7 @@ Module ApplicativeCompose (Q R : ApplicativeSpec) <: ApplicativeSpec.
       fmap f = fapp (pure f).
   Proof.
     intros. unfold fapp, fmap, pure. unfold compose.
-    Search R.fmap. repeat rewrite R.app_fmap_pure.
+    repeat rewrite R.app_fmap_pure.
     apply f_equal. symmetry. rewrite Q.app_fmap_pure.
     apply R.app_homomorphism.
   Qed.

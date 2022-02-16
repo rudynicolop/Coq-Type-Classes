@@ -1,6 +1,5 @@
 Require Import Coq.Lists.List.
-Require Export TypeClassLib.Applicative.
-Require Export TypeClassLib.Foldable.
+From TypeClasses Require Export Applicative Foldable.
 
 Lemma fapp_compose :
   forall {F : Type -> Type} `{Applicative F} {A B C : Type}

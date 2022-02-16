@@ -1,8 +1,6 @@
-Require Import Coq.Lists.List.
-Require Export TypeClassLib.Auxilary.
-Require Import Coq.Arith.PeanoNat.
-Require Import Coq.Init.Nat.
-Require Import Coq.micromega.Lia.
+From Coq Require Import Lists.List
+     Arith.PeanoNat Init.Nat micromega.Lia.
+Require Export TypeClasses.Auxiliary.
 
 (** * Monoid Type Class *)
 

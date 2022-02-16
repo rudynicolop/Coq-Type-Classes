@@ -1,5 +1,5 @@
 Require Coq.Lists.List.
-Require Export TypeClassLib.Auxilary.
+Require Export TypeClasses.Auxiliary.
 
 (** * Functor Type Class *)
 
@@ -113,7 +113,7 @@ Module ListFunctorSpec <: FunctorSpec.
       map (fun x : A => x) = (fun x : list A => x).
   Proof.
     intros. extensionality l.
-    Search (map (fun x => x)). rewrite map_id. reflexivity.
+    rewrite map_id. reflexivity.
   Qed.
 
   Lemma fmap_compose : forall {A B C : Type} (f : A -> B) (g : B -> C),

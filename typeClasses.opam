@@ -1,0 +1,17 @@
+opam-version: "2.0"
+version: "0.1.0"
+synopsis: "Verified Haskell-style typeclasses."
+maintainer: "rnp39@cornell.edu"
+authors: ["Rudy Nicolo Peterson <rnp39@cornell.edu>"]
+homepage: "https://github.com/rudynicolop/Coq-Type-Classes"
+dev-repo: "git+https://github.com/rudynicolop/Coq-Type-Classes"
+bug-reports: "https://github.com/rudynicolop/Coq-Type-Classes/issues"
+build: [
+  ["dune" "build" "-p" name "-j" jobs]
+]
+install: [
+  ["dune" "install"]
+]
+depends: [
+  "coq" {build}
+]

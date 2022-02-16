@@ -1,5 +1,5 @@
 Require Coq.Lists.List.
-Require Export TypeClassLib.Monad.
+Require Export TypeClasses.Monad.
 
 (** * The Monad Transformer Type Class *)
 
@@ -143,7 +143,7 @@ Module OptionMonadTransSpec <: MonadTransSpec.
       intros. unfold bindt.
       rewrite <- (@bind_assoc M). apply f_equal.
       extensionality o. destruct o as [a |]; auto.
-      Search pure. rewrite pure_left. reflexivity.
+      rewrite pure_left. reflexivity.
     Qed.
   End TMonadSpec.
 
@@ -166,7 +166,7 @@ Module OptionMonadTransSpec <: MonadTransSpec.
     intros. extensionality a. unfold compose, lift.
     cbn. unfold purec. unfold compose, OptionMonadSpec.pure.
     simpl. unfold OptionMonadSpec.pure.
-    Search fmap. rewrite app_fmap_pure.
+    rewrite app_fmap_pure.
     apply app_homomorphism.
   Qed.
   (**[]*)

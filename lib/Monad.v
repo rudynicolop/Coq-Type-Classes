@@ -1,5 +1,5 @@
 Require Coq.Lists.List.
-Require Export TypeClassLib.Applicative.
+Require Export TypeClasses.Applicative.
 
 (** * The Monad Type Class *)
 Class Monad (M : Type -> Type) :=
@@ -194,7 +194,7 @@ Module ListMonadSpec <: MonadSpec.
   Proof.
     intros. unfold bind.
     induction m as [| a t IHt]; simpl in *; auto.
-    rewrite IHt; clear IHt. Search (flat_map _ _ ++ flat_map _ _).
+    rewrite IHt; clear IHt.
     rewrite flat_map_app. reflexivity.
   Qed.
 End ListMonadSpec.

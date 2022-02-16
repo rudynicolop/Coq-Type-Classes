@@ -1,0 +1,6 @@
+(coq.theory
+ (name TypeClasses)
+ (package typeClasses)
+ (synopsis "Haskell-style typeclasses in Coq.")
+ (modules (:standard)))
+(include_subdirs qualified)

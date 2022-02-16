@@ -1,10 +1,1 @@
--Q . TypeClassLib
-
-Auxilary.v
-Functor.v
-Applicative.v
-Monad.v
-MonadTrans.v
-Monoid.v
-Foldable.v
-Traversable.v
+-Q _build/default/lib TypeClasses
