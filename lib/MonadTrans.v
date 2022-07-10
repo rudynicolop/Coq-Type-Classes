@@ -1,7 +1,7 @@
 Require Coq.Lists.List.
 Require Export TypeClasses.Monad.
 
-(** * The Monad Transformer Type Class *)
+(** * The Monad Transformer Type Class. *)
 
 Class MonadTrans
       (T : (Type -> Type) -> Type -> Type) :=
@@ -11,12 +11,11 @@ Class MonadTrans
              {A : Type}, M A -> T M A;
     (** Lift with pure is idempotent. *)
     lift_pure : forall {M : Type -> Type} `{Monad M} {A : Type},
-        @lift M _ A ∘ (@pure M _ A) = @pure (T M) _ A;
+      lift (M := M) (A := A) ∘ (pure (F := M)) = pure (F := T M);
     (** Lift composes with bind. *)
     lift_bind : forall {M : Type -> Type} `{Monad M}
                   {A B : Type} (m : M A) (f : A -> M B),
-        lift (m >>= f) = lift m >>= lift ∘ f; }.
-(**[]*)
+      lift (m >>= f) = lift m >>= lift ∘ f }.
 
 (** Specification. *)
 Module Type MonadTransSpec.
@@ -26,17 +25,14 @@ Module Type MonadTransSpec.
 
   Parameter lift : forall {M : Type -> Type} `{Monad M}
                      {A : Type}, M A -> T M A.
-  (**[]*)
 
   Axiom lift_pure : forall {M : Type -> Type} `{Monad M} {A : Type},
       @lift M _ A ∘ (@pure M _ A) =
       @pure (T M) (@Monad_Applicative (T M) (TMonad M)) A.
-  (**[]*)
 
   Axiom lift_bind : forall {M : Type -> Type} `{Monad M}
                           {A B : Type} (m : M A) (f : A -> M B),
       lift (m >>= f) = @bind (T M) (TMonad M) _ _ (lift m) (lift ∘ f).
-  (**[]*)
 End MonadTransSpec.
 
 Module MonadTransFactory (MS : MonadTransSpec).
@@ -46,7 +42,6 @@ Module MonadTransFactory (MS : MonadTransSpec).
     { lift := @MS.lift;
       lift_pure := @MS.lift_pure;
       lift_bind := @MS.lift_bind }.
-  (**[]*)
 End MonadTransFactory.
 
 (** Identity. *)
@@ -57,7 +52,6 @@ Module IdentityMonadTransSpec <: MonadTransSpec.
 
   Definition lift {M : Type -> Type} `{Monad M}
              {A : Type} : M A -> M A := fun m => m.
-  (**[]*)
 
   Lemma lift_pure : forall {M : Type -> Type} `{Monad M} {A : Type},
       @lift M _ A ∘ (@pure M _ A) =
@@ -74,7 +68,6 @@ Module IdentityMonadTransFactory :=
   MonadTransFactory IdentityMonadTransSpec.
 Instance IdentityMonadTrans : MonadTrans (fun M : Type -> Type => M) :=
   IdentityMonadTransFactory.MonadTransInstance.
-(**[]*)
 
 (** Option. *)
 Module OptionMonadTransSpec <: MonadTransSpec.
@@ -83,7 +76,6 @@ Module OptionMonadTransSpec <: MonadTransSpec.
   Instance TApplicative (M : Type -> Type)
            `{HM : Monad M} : Applicative (M ∘ option) :=
     ComposeApplicative option M.
-  (**[]*)
 
   Section TMonadSpec.
     Context {M : Type -> Type}.
@@ -92,15 +84,14 @@ Module OptionMonadTransSpec <: MonadTransSpec.
 
     Definition bindt {A B : Type}
                (m : M (option A)) (f : A -> M (option B)) : M (option B) :=
-      o <- m ;;
+      let* o := m in
       match o with
       | None   => pure None
       | Some a => (f a)
       end.
-    (**[]*)
 
     Lemma pure_leftt : forall {A B : Type} (a : A) (f : A -> M (option B)),
-        bindt (@pure (M ∘ option) _ A a) f = f a.
+        bindt (pure (F := M ∘ option)a) f = f a.
     Proof.
       intros. pose proof @pure_left M HM (option A) (option B) as H.
       unfold bindt. simpl. unfold purec. unfold compose.
@@ -108,7 +99,7 @@ Module OptionMonadTransSpec <: MonadTransSpec.
     Qed.
 
     Lemma pure_rightt : forall {A : Type} (m : M (option A)),
-      bindt m (@pure (M ∘ option) _ A) = m.
+        bindt m (pure (F := M ∘ option) (A:=A)) = m.
     Proof.
       intros. unfold bindt. simpl. unfold purec.
       unfold compose.
@@ -145,19 +136,39 @@ Module OptionMonadTransSpec <: MonadTransSpec.
       extensionality o. destruct o as [a |]; auto.
       rewrite pure_left. reflexivity.
     Qed.
+    
+    Lemma fmap_bindt : forall {A B : Type} (m : M (option A)) (f : A -> B),
+        fmap (F := M ∘ option) f m = bindt m (pure (F := M ∘ option) ∘ f).
+    Proof.
+      intros. unfold bindt.
+      assert (hanon :
+               (fun o =>
+                  match o with
+                  | Some a => (pure (F := M ∘ option) ∘ f) a
+                  | None => pure (F := M) None
+                  end)
+               = pure (F := M) ∘ (fmap f)).
+      { extensionality o. unfold "∘".
+        destruct o; reflexivity. }
+      unfold "∘" in *.
+      rewrite hanon; clear hanon.
+      pose proof fmap_bind m (fmap f) as h.
+      unfold "∘" in *.
+      unfold OptionMonadSpec.F in h.
+      rewrite <- h; clear h. reflexivity.
+    Qed.
   End TMonadSpec.
 
   Instance TMonad : forall (M : Type -> Type) `{Monad M}, Monad (M ∘ option) :=
     { bind := @bindt M _;
       pure_left := @pure_leftt M _;
       pure_right := @pure_rightt M _;
-      bind_assoc := @bind_assoct M _; }.
-  (**[]*)
+      bind_assoc := @bind_assoct M _;
+      fmap_bind := @fmap_bindt M _ }.
 
   Definition lift {M : Type -> Type} `{Monad M}
              {A : Type} (m : M A) : M (option A) :=
     @fmap M _ _ _ (@pure option _ _) m.
-  (**[]*)
 
   Lemma lift_pure : forall {M : Type -> Type} `{Monad M} {A : Type},
       @lift M _ A ∘ (@pure M _ A) =
@@ -169,14 +180,19 @@ Module OptionMonadTransSpec <: MonadTransSpec.
     rewrite app_fmap_pure.
     apply app_homomorphism.
   Qed.
-  (**[]*)
 
   Lemma lift_bind : forall {M : Type -> Type} `{Monad M}
                       {A B : Type} (m : M A) (f : A -> M B),
       lift (m >>= f) =
-      @bind (M ∘ option) (TMonad M) _ _ (lift m) (lift ∘ f).
+        @bind (M ∘ option) (TMonad M) _ _ (lift m) (lift ∘ f).
   Proof.
     intros. unfold compose. simpl. unfold lift.
-    unfold bindt. Unset Printing Notations. cbn.
-  Admitted.
+    unfold bindt. cbn.
+    unfold OptionMonadSpec.pure.
+    unfold fmapc, purec, "∘"(*,"<$>"*) in *. cbn in *.
+    do 2 rewrite fmap_bind; unfold "∘".
+    do 2 rewrite <- bind_assoc. f_equal.
+    extensionality a.
+    rewrite pure_left. rewrite fmap_bind; reflexivity.
+  Qed.
 End OptionMonadTransSpec.

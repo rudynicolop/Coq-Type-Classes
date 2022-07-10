@@ -7,11 +7,13 @@ Class Monad (M : Type -> Type) :=
     bind : forall {A B : Type}, M A -> (A -> M B) -> M B;
     (** Laws. *)
     pure_left : forall {A B : Type} (a : A) (f : A -> M B),
-        bind (pure a) f = f a;
+      bind (pure a) f = f a;
     pure_right : forall {A : Type} (m : M A),
-        bind m pure = m;
+      bind m pure = m;
     bind_assoc : forall {A B C : Type} (m : M A) (k : A -> M B) (h : B -> M C),
-        bind m (fun a => bind (k a) h) = bind (bind m k) h }.
+      bind m (fun a => bind (k a) h) = bind (bind m k) h;
+    fmap_bind : forall {A B : Type} (m : M A) (f : A -> B),
+      fmap f m = bind m (pure ∘ f) }.
 (**[]*)
 
 (** Haskellites will note the absence of [return : A -> M A].
@@ -19,14 +21,18 @@ Class Monad (M : Type -> Type) :=
     the definitions in the spirit of this proposal:
     [https://gitlab.haskell.org/ghc/ghc/-/wikis/proposal/monad-of-no-return] *)
 
-Infix ">>=" := bind (at level 43, left associativity).
+Notation "'let*' a ':=' ma 'in' mb"
+  := (bind ma (fun a => mb))
+       (at level 61, a pattern, right associativity).
 
-Notation "a <- ma ;; mb" :=
-  (bind ma (fun a => mb)) (at level 100, right associativity).
+Notation "'let*' ' a ':=' ma 'in' mb"
+  := (bind ma (fun a => mb))
+       (at level 61, a pattern, right associativity).
+
+Infix ">>=" := bind (at level 43, left associativity).
 
 Definition mcompose {A B C : Type} {M : Type -> Type} `{Monad M}
            (f : A -> M B) (h : B -> M C) (a : A) : M C := f a >>= h.
-(**[]*)
 
 Infix ">=>" := mcompose (at level 44, right associativity).
 
@@ -67,9 +73,9 @@ Section MonadLaws.
   Qed.
 
   (** The join operator. *)
-  Definition join {A : Type}
-             (m : M (M A)) : M A := m' <- m;; m'.
-  (**[]*)
+  Definition
+    join {A : Type} (m : M (M A))
+    : M A := let* m' := m in m'.
 End MonadLaws.
 
 (** * Monad Specification *)
@@ -92,6 +98,10 @@ Module Type MonadSpec <: ApplicativeSpec.
   (** Associativity of bind. *)
   Axiom bind_assoc : forall {A B C : Type} (m : M A) (k : A -> M B) (h : B -> M C),
       bind m (fun a => bind (k a) h) = bind (bind m k) h.
+
+  (** Fmap is equivalent to bind. *)
+  Axiom fmap_bind : forall {A B : Type} (m : M A) (f : A -> B),
+      fmap f m = bind m (pure ∘ f).
 End MonadSpec.
 
 Module MonadFactory (MS : MonadSpec).
@@ -101,7 +111,8 @@ Module MonadFactory (MS : MonadSpec).
     { bind _ _ := MS.bind;
       pure_left _ _ := MS.pure_left;
       pure_right _ := MS.pure_right;
-      bind_assoc _ _ _ := MS.bind_assoc }.
+      bind_assoc _ _ _ := MS.bind_assoc;
+      fmap_bind _ _ := MS.fmap_bind }.
 End MonadFactory.
 
 (** Identity *)
@@ -122,12 +133,15 @@ Module IdentityMonadSpec <: MonadSpec.
   Lemma bind_assoc : forall {A B C : Type} (m : A) (k : A -> B) (h : B -> C),
       bind m (fun a => bind (k a) h) = bind (bind m k) h.
   Proof. intros. reflexivity. Qed.
+
+  Lemma fmap_bind : forall {A B : Type} (m : A) (f : A -> B),
+      fmap f m = bind m (pure ∘ f).
+  Proof. intros; reflexivity. Qed.
 End IdentityMonadSpec.
 
 Module IdentityMonadFactory := MonadFactory IdentityMonadSpec.
 Instance IdentityMonad : Monad (fun X => X) :=
   IdentityMonadFactory.MonadInstance.
-(**[]*)
 
 (** Option *)
 Module OptionMonadSpec <: MonadSpec.
@@ -140,7 +154,6 @@ Module OptionMonadSpec <: MonadSpec.
     | None   => None
     | Some a => f a
     end.
-  (**[]*)
 
   Lemma pure_left : forall {A B : Type} (a : A) (f : A -> option B),
       bind (pure a) f = f a.
@@ -154,6 +167,10 @@ Module OptionMonadSpec <: MonadSpec.
     forall {A B C : Type} (m : option A) (k : A -> option B) (h : B -> option C),
       bind m (fun a => bind (k a) h) = bind (bind m k) h.
   Proof. intros. destruct m; reflexivity. Qed.
+
+  Lemma fmap_bind : forall {A B : Type} (m : option A) (f : A -> B),
+      fmap f m = bind m (pure ∘ f).
+  Proof. intros; destruct m; reflexivity. Qed.
 End OptionMonadSpec.
 
 Module OptionMonadFactory := MonadFactory OptionMonadSpec.
@@ -162,7 +179,7 @@ Instance OptionMonad : Monad option :=
 
 Compute Some 5 >>= (fun x => pure (x * x)) >>= (fun y => pure (y + y)).
 Compute Some 5 >>= (fun _ => None) >>= (fun y => pure (y + y)).
-Compute x <- Some 5;; y <- Some 6;; pure (x * y).
+Compute let* x := Some 5 in let* y := Some 6 in pure (x * y).
 
 (** List *)
 Module ListMonadSpec <: MonadSpec.
@@ -174,7 +191,6 @@ Module ListMonadSpec <: MonadSpec.
 
   Definition bind {A B : Type} (l : list A) (f : A -> list B) : list B :=
     flat_map f l.
-  (**[]*)
 
   Lemma pure_left : forall {A B : Type} (a : A) (f : A -> list B),
       bind (pure a) f = f a.
@@ -197,19 +213,22 @@ Module ListMonadSpec <: MonadSpec.
     rewrite IHt; clear IHt.
     rewrite flat_map_app. reflexivity.
   Qed.
+
+  Lemma fmap_bind : forall {A B : Type} (m : list A) (f : A -> B),
+      fmap f m = bind m (pure ∘ f).
+  Proof. intros; destruct m; reflexivity. Qed.
 End ListMonadSpec.
 
 Module ListMonadFactory := MonadFactory ListMonadSpec.
 Instance ListMonad : Monad list :=
   ListMonadFactory.MonadInstance.
-(**[]*)
 
 Module ListPlayground.
   Import Coq.Lists.List.
   Import ListNotations.
 
   Definition list_pairs {A B : Type} (la : list A) (lb : list B) : list (A * B) :=
-    a <- la;; b <- lb;; pure (a,b).
+    let* a := la in let* b := lb in pure (a,b).
 
   Compute list_pairs [1;2;3;4;5;6] [None; Some 69; None; None; Some 42].
 
@@ -245,6 +264,9 @@ Module Type ParamMonadSpec <: ParamApplicativeSpec.
     Axiom bind_assoc :
       forall {A B C : Type} (m : M T A) (k : A -> M T B) (h : B -> M T C),
         bind m (fun a => bind (k a) h) = bind (bind m k) h.
+    
+    Axiom fmap_bind : forall {A B : Type} (m : M T A) (f : A -> B),
+      fmap f m = bind m (pure ∘ f).
   End Spec.
 End ParamMonadSpec.
 
@@ -255,7 +277,8 @@ Module ParamMonadFactory (MS : ParamMonadSpec).
     { bind := @MS.bind T;
       pure_left := @MS.pure_left T;
       pure_right := @MS.pure_right T;
-      bind_assoc := @MS.bind_assoc T }.
+      bind_assoc := @MS.bind_assoc T;
+      fmap_bind := @MS.fmap_bind T }.
 End ParamMonadFactory.
 
 (** Either. *)
@@ -272,7 +295,6 @@ Module EitherMonadSpec <: ParamMonadSpec.
       | Left t  => Left t
       | Right a => f a
       end.
-    (**[]*)
 
     Lemma pure_left : forall {A B : Type} (a : A) (f : A -> either T B),
         bind (pure a) f = f a.
@@ -287,13 +309,16 @@ Module EitherMonadSpec <: ParamMonadSpec.
         (k : A -> either T B) (h : B -> either T C),
         bind m (fun a => bind (k a) h) = bind (bind m k) h.
     Proof. intros. destruct m; reflexivity. Qed.
+
+    Lemma fmap_bind : forall {A B : Type} (m : either T A) (f : A -> B),
+        fmap f m = bind m (pure ∘ f).
+    Proof. intros; destruct m; reflexivity. Qed.
   End Spec.
 End EitherMonadSpec.
 
 Module EitherMonadFactory := ParamMonadFactory EitherMonadSpec.
 Instance EitherMonad (A : Type) : Monad (either A) :=
   EitherMonadFactory.ParamMonadInstance A.
-(**[]*)
 
 (** Arrow. *)
 Module ArrowMonadSpec <: ParamMonadSpec.
@@ -305,7 +330,6 @@ Module ArrowMonadSpec <: ParamMonadSpec.
 
     Definition bind {A B : Type}
                (m : T -> A) (f : A -> T -> B) : T -> B := fun t => f (m t) t.
-    (**[]*)
 
     Lemma pure_left : forall {A B : Type} (a : A) (f : A -> T -> B),
         bind (pure a) f = f a.
@@ -319,13 +343,16 @@ Module ArrowMonadSpec <: ParamMonadSpec.
       forall {A B C : Type} (m : T -> A) (k : A -> T -> B) (h : B -> T -> C),
         bind m (fun a => bind (k a) h) = bind (bind m k) h.
     Proof. intros. reflexivity. Qed.
+
+    Lemma fmap_bind : forall {A B : Type} (m : T -> A) (f : A -> B),
+        fmap f m = bind m (pure ∘ f).
+    Proof. intros; reflexivity. Qed.
   End Spec.
 End ArrowMonadSpec.
 
 Module ArrowMonadFactory := ParamMonadFactory ArrowMonadSpec.
 Instance ArrowMonad (A : Type) : Monad (fun B => A -> B) :=
   ArrowMonadFactory.ParamMonadInstance A.
-(**[]*)
 
 (** State. *)
 Module StateMonadSpec <: ParamMonadSpec.
@@ -358,6 +385,10 @@ Module StateMonadSpec <: ParamMonadSpec.
       intros. extensionality st. unfold bind.
       destruct (m st); reflexivity.
     Qed.
+
+    Lemma fmap_bind : forall {A B : Type} (m : state S A) (f : A -> B),
+        fmap f m = bind m (pure ∘ f).
+    Proof. intros; reflexivity. Qed.
   End Spec.
 End StateMonadSpec.
 
@@ -392,10 +423,13 @@ Module ContMonadSpec <: ParamMonadSpec.
         (k : A -> cont R B) (h : B -> cont R C),
         bind m (fun a => bind (k a) h) = bind (bind m k) h.
     Proof. intros. reflexivity. Qed.
+
+    Lemma fmap_bind : forall {A B : Type} (m : cont R A) (f : A -> B),
+        fmap f m = bind m (pure ∘ f).
+    Proof. intros; reflexivity. Qed.
   End Spec.
 End ContMonadSpec.
 
 Module ContMonadFactory := ParamMonadFactory ContMonadSpec.
 Instance ContMonad (R : Type) : Monad (cont R) :=
   ContMonadFactory.ParamMonadInstance R.
-(**[]*)
