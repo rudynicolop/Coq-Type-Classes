@@ -11,7 +11,7 @@ Class Applicative (F : Type -> Type) :=
     app_identity : forall {A : Type} (a : F A),
         fapp (pure (fun x => x)) a = a;
     app_homomorphism : forall {A B : Type} (f : A -> B) (a : A),
-        fapp (pure f) (pure a) = pure (f a);
+      fapp (pure f) (pure a) = pure (f a);
     app_interchange : forall {A B : Type} (f : F (A -> B)) (a : A),
         fapp f (pure a) = fapp (pure (fun h => h a)) f;
     app_composition : forall {A B C : Type} (f : F (A -> B)) (h : F (B -> C)) (a : F A),

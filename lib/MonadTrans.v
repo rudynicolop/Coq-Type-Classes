@@ -196,3 +196,241 @@ Module OptionMonadTransSpec <: MonadTransSpec.
     rewrite pure_left. rewrite fmap_bind; reflexivity.
   Qed.
 End OptionMonadTransSpec.
+
+Module OptionMonadTransFactory :=
+  MonadTransFactory OptionMonadTransSpec.
+Instance OptionMonadTrans : MonadTrans (fun M : Type -> Type => M ∘ option) :=
+  OptionMonadTransFactory.MonadTransInstance.
+
+Definition StateT (ST : Type) (M : Type -> Type) (A : Type) : Type :=
+  ST -> M (A * ST)%type.
+
+Lemma StateT_state : forall ST A, StateT ST (fun x => x) A = state ST A.
+Proof. intros; reflexivity. Qed.
+
+Definition map_fst {A B C : Type} (f : A -> B) '((a,c) : A * C) : B * C :=
+  (f a, c).
+
+Module StateTransformer.
+  Section Transformers.
+    Context {ST : Type} {M : Type -> Type} `{M_Functor : Functor M}.
+    
+    Definition fmapt {A B : Type} (f : A -> B) (m : StateT ST M A)
+      : StateT ST M B :=
+      fun st => map_fst f <$> m st.
+
+    Lemma fmapt_id : forall {A : Type},
+        fmapt (fun x : A => x) = (fun x : StateT ST M A => x).
+    Proof.
+      intros; extensionality bruh.
+      extensionality st; unfold fmapt, map_fst.
+      assert (duh : (fun '((a, c) : A * ST) => (a, c)) = fun x => x).
+      { extensionality ast. destruct ast; reflexivity. }
+      rewrite duh; rewrite fmap_id; reflexivity.
+    Qed.
+    
+    Lemma fmapt_compose : forall {A B C : Type} (f : A -> B) (g : B -> C),
+        fmapt (g ∘ f) = fmapt g ∘ fmapt f.
+    Proof.
+      intros; unfold fmapt; extensionality bruh;
+        extensionality st; unfold map_fst.
+      unfold "∘".
+      pose proof fmap_compose
+           (A := A * ST) (B := B * ST)
+           (C := C * ST) (F := M) as h.
+      unfold "∘" in h.
+      specialize h with
+        (f := fun '(a,st) => (f a, st))
+        (g := fun '(b,st) => (g b, st)).
+      apply equal_f with (bruh st) in h.
+      rewrite <- h; clear h; f_equal.
+      extensionality ast.
+      destruct ast as [a st']; reflexivity.
+    Qed.
+  End Transformers.
+  
+  Instance StateTransFunctor (ST : Type) (M : Type -> Type)
+           `{M_Functor : Functor M} : Functor (StateT ST M) :=
+    { fmap := @fmapt ST M M_Functor
+    ; fmap_id := @fmapt_id ST M M_Functor
+    ; fmap_compose := @fmapt_compose ST M M_Functor }.
+
+  Section Transformers.
+    Context {ST : Type} {M : Type -> Type} `{M_Monad : Monad M}.
+
+    Definition puret {A : Type} (a : A) : StateT ST M A :=
+      fun st => pure (a, st).
+    
+    Definition
+      fappt
+      {A B : Type} (f : StateT ST M (A -> B))
+      (m : StateT ST M A) : StateT ST M B :=
+      fun st : ST => let* '((f,st) : (A -> B) * ST) := f st in
+                  map_fst f <$> m st.
+    
+    Lemma appt_identity : forall {A : Type} (m : StateT ST M A),
+        fappt (puret (fun x => x)) m = m.
+    Proof.
+      intros; extensionality st; unfold fappt, puret.
+      rewrite pure_left. unfold map_fst.
+      assert (h: (fun '(a, c) => (a, c)) = fun x : A * ST => x)
+        by (extensionality ac; destruct ac; reflexivity).
+      rewrite h, fmap_id; reflexivity.
+    Qed.
+
+    Lemma appt_homomorphism : forall {A B : Type} (f : A -> B) (a : A),
+        fappt (puret f) (puret a) = puret (f a).
+    Proof.
+      intros; unfold fappt, puret.
+      extensionality st; rewrite pure_left.
+      rewrite app_fmap_pure.
+      rewrite app_homomorphism.
+      reflexivity.
+    Qed.
+
+    Lemma appt_interchange : forall {A B : Type} (f : StateT ST M (A -> B)) (a : A),
+        fappt f (puret a) = fappt (puret (fun h => h a)) f.
+    Proof.
+      intros; unfold fappt, puret.
+      extensionality st.
+      rewrite pure_left.
+      rewrite fmap_bind. unfold "∘".
+      f_equal. extensionality gst; clear st f.
+      destruct gst as [g st']; cbn.
+      rewrite app_fmap_pure, app_homomorphism; reflexivity.
+    Qed.
+                               
+    Lemma appt_composition :
+      forall {A B C : Type}
+        (f : StateT ST M (A -> B)) (h : StateT ST M (B -> C)) (a : StateT ST M A),
+        fappt h (fappt f a) = fappt (fappt (fappt (puret (@compose A B C)) h) f) a.
+    Proof.
+      intros; unfold fappt,puret.
+      extensionality st.
+      repeat rewrite <- bind_assoc.
+      rewrite pure_left.
+      rewrite fmap_bind.
+      rewrite <- bind_assoc.
+      f_equal. clear st.
+      unfold "∘". extensionality gst.
+      destruct gst as [g st].
+      rewrite pure_left; cbn.
+      do 2 rewrite fmap_bind.
+      do 2 rewrite <- bind_assoc; unfold "∘".
+      f_equal. clear st.
+      extensionality wst.
+      destruct wst as [w st].
+      rewrite pure_left, fmap_bind,<- bind_assoc.
+      unfold "∘". cbn. rewrite fmap_bind; unfold "∘".
+      f_equal; clear st.
+      extensionality ast.
+      rewrite pure_left.
+      destruct ast; reflexivity.
+    Qed.
+      
+    Lemma appt_fmapt_puret : forall {A B : Type} (f : A -> B),
+        fmapt f = fappt (puret f).
+    Proof.
+      intros; unfold fmapt, fappt, puret.
+      extensionality m. extensionality st.
+      rewrite pure_left; reflexivity.
+    Qed.
+  End Transformers.
+  
+  Instance StateTransApplicative (ST : Type) (M : Type -> Type)
+           `{HM : Monad M} : Applicative (StateT ST M) :=
+    { pure := @puret ST M HM
+    ; fapp := @fappt ST M HM
+    ; app_identity := @appt_identity ST M HM
+    ; app_homomorphism := @appt_homomorphism ST M HM
+    ; app_interchange := @appt_interchange ST M HM
+    ; app_composition := @appt_composition ST M HM
+    ; app_fmap_pure := @appt_fmapt_puret ST M HM }.
+
+  Section Transformers.
+    Context {ST : Type} {M : Type -> Type} `{M_Monad : Monad M}.
+
+    Definition
+      bindt {A B : Type} (m : StateT ST M A)
+      (f : A -> StateT ST M B) : StateT ST M B :=
+      fun st => let* '(a,st) := m st in f a st.
+    
+    Lemma puret_left : forall {A B : Type} (a : A) (f : A -> StateT ST M B),
+        bindt (puret a) f = f a.
+    Proof.
+      intros; unfold bindt, puret.
+      extensionality st. rewrite pure_left; reflexivity.
+    Qed.
+      
+    Lemma puret_right : forall {A : Type} (m : StateT ST M A),
+        bindt m puret = m.
+    Proof.
+      intros; unfold bindt, puret.
+      extensionality st.
+      assert (h: (fun '(a, st) => pure (F := M) (a, st)) = (fun ast : A * ST => pure ast))
+        by (extensionality ast; destruct ast; reflexivity).
+      rewrite h, pure_right. reflexivity.
+    Qed.
+      
+    Lemma bindt_assoc :
+      forall {A B C : Type} (m : StateT ST M A)
+        (k : A -> StateT ST M B) (h : B -> StateT ST M C),
+        bindt m (fun a => bindt (k a) h) = bindt (bindt m k) h.
+    Proof.
+      intros; unfold bindt; extensionality st.
+      rewrite <- bind_assoc. f_equal.
+      clear st. extensionality ast.
+      destruct ast as [a ast]; reflexivity.
+    Qed.
+      
+    Lemma fmapt_bindt : forall {A B : Type} (m : StateT ST M A) (f : A -> B),
+        fmapt f m = bindt m (puret ∘ f).
+    Proof.
+      intros; unfold fmapt, bindt, puret, "∘".
+      extensionality st.
+      rewrite fmap_bind.
+      f_equal. clear st; extensionality ast.
+      destruct ast; reflexivity.
+    Qed.
+  End Transformers.
+
+  Instance StateTransFormerMonad (M : Type -> Type) (ST : Type)
+           `{HM : Monad M} : Monad (StateT ST M) :=
+    { bind := @bindt ST M HM
+    ; pure_left := @puret_left ST M HM
+    ; pure_right := @puret_right ST M HM
+    ; bind_assoc := @bindt_assoc ST M HM
+    ; fmap_bind := @fmapt_bindt ST M HM }.
+  
+  Section Transformers.
+    Context {ST : Type} {M : Type -> Type} `{M_Monad : Monad M}.
+    
+    Definition liftt {A : Type} (m : M A) : StateT ST M A :=
+      fun st => let* a := m in pure (a, st).
+      
+    Lemma liftt_pure : forall {A : Type},
+        liftt (A := A) ∘ (pure (F := M)) = puret.
+    Proof.
+      intros; unfold liftt, puret.
+      extensionality m. extensionality st.
+      unfold compose. rewrite pure_left.
+      reflexivity.
+    Qed.
+    
+    Lemma liftt_bindt : forall {A B : Type} (m : M A) (f : A -> M B),
+        liftt (m >>= f) = bindt (liftt m) (liftt ∘ f).
+    Proof.
+      intros; unfold bindt,liftt,"∘".
+      extensionality st.
+      do 2 rewrite <- bind_assoc.
+      f_equal.
+      extensionality a.
+      rewrite pure_left. reflexivity.
+    Qed.
+  End Transformers.
+End StateTransformer.
+
+Instance StateMonadTransformer (ST : Type) : MonadTrans (StateT ST) :=
+  { lift := @StateTransformer.liftt ST
+  ; lift_pure := @StateTransformer.liftt_pure ST
+  ; lift_bind := @StateTransformer.liftt_bindt ST }.
